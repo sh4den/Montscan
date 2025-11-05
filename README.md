@@ -47,7 +47,7 @@
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/montscan.git
+   git clone https://github.com/sh4den/Montscan.git
    cd montscan
    ```
 
