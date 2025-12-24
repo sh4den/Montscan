@@ -36,7 +36,7 @@
 - **Python 3.14+**
 - **Tesseract OCR** - [Installation guide](https://github.com/tesseract-ocr/tesseract)
 - **Poppler** - For PDF to image conversion
-- **Ollama** - [Installation guide](https://ollama.ai/) with a language model (e.g., `llama3.2`)
+- **Ollama** - [Installation guide](https://ollama.ai/) with a language model (e.g., `ministral-3:3b`)
 - **Nextcloud instance** (optional) - For cloud storage integration
 
 ---
@@ -216,9 +216,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 🙏 Acknowledgments
 
 - [pyftpdlib](https://github.com/giampaolo/pyftpdlib) - Python FTP server library
-- [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) - OCR engine
-- [Ollama](https://ollama.ai/) - Local AI model runner
+- [Ollama](https://ollama.ai/) - Local AI vision model runner
 - [Nextcloud](https://nextcloud.com/) - Self-hosted cloud storage
+- [pdf2image](https://github.com/Belval/pdf2image) - PDF to image conversion
 
 ---
 

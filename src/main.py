@@ -6,7 +6,7 @@ from pyftpdlib.authorizers import DummyAuthorizer
 from pyftpdlib.servers import FTPServer
 from colorama import Fore, Style, init
 
-from services.DocumentProcessor import DocumentProcessor
+from services.Agent import Agent
 from services.ScannerHandler import ScannerHandler
 
 # Initialize colorama for Windows compatibility
@@ -54,7 +54,7 @@ def setup_ftp_server():
     handler.authorizer = authorizer
     handler.banner = "Montscan FTP Server Ready"
 
-    handler.processor = DocumentProcessor()
+    handler.agent = Agent()
 
     server = FTPServer((ftp_host, ftp_port), handler)
     server.max_cons = 256

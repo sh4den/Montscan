@@ -23,7 +23,7 @@ services:
       -
       - # Ollama Configuration
       - OLLAMA_HOST=http://localhost:11434
-      - OLLAMA_MODEL=llama3.2
+      - OLLAMA_MODEL=ministral-3:3b-instruct-2512-q4_K_M
     depends_on:
       - ollama
     networks:

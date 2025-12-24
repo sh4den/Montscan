@@ -14,7 +14,7 @@ class ScannerHandler(FTPHandler):
     document processor and deletes them after successful processing.
     """
 
-    processor = None
+    agent = None
 
     def on_file_received(self, file_path):
         """
@@ -34,8 +34,8 @@ class ScannerHandler(FTPHandler):
             return
 
         try:
-            if self.processor:
-                success = self.processor.process_document(file_path)
+            if self.agent:
+                success = self.agent.process_document(file_path)
 
                 if success:
                     try:

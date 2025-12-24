@@ -1,16 +1,18 @@
 import logging
-import pytesseract
 import ollama
 import requests
+import base64
 import os
 
+from PIL.Image import Image
 from requests.auth import HTTPBasicAuth
 from datetime import datetime
+from io import BytesIO
 from pdf2image import convert_from_path
 
 logger = logging.getLogger(__name__)
 
-class DocumentProcessor:
+class Agent:
     """
     Handles OCR, AI naming, and Nextcloud upload of scanned documents.
 
@@ -22,7 +24,7 @@ class DocumentProcessor:
 
     def __init__(self):
         """
-        Initialize the DocumentProcessor with environment variables.
+        Initialize the Agent with environment variables.
 
         Environment variables:
         - OLLAMA_HOST: Host URL for the Ollama AI service.
@@ -34,65 +36,50 @@ class DocumentProcessor:
         - TESSERACT_PATH: Path to the Tesseract OCR executable.
         """
         self.ollama_host = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
-        self.ollama_model = os.getenv('OLLAMA_MODEL', 'llama3.2')
+        self.ollama_model = os.getenv('OLLAMA_MODEL', 'ministral-3:3b-instruct-2512-q4_K_M')
         self.nextcloud_url = os.getenv('NEXTCLOUD_URL')
         self.nextcloud_username = os.getenv('NEXTCLOUD_USERNAME')
         self.nextcloud_password = os.getenv('NEXTCLOUD_PASSWORD')
         self.nextcloud_path = os.getenv('NEXTCLOUD_UPLOAD_PATH', '/Documents/Scanned')
 
-        tesseract_path = os.getenv('TESSERACT_PATH')
-        if tesseract_path and os.path.exists(tesseract_path):
-            pytesseract.pytesseract.tesseract_cmd = tesseract_path
-
-    def extract_text_from_pdf(self, pdf_path: str) -> str:
+    def extract_image(self, pdf_path: str) -> str | None:
         """
-        Extract text from a PDF file using OCR.
+        Extract first page as image from a PDF file.
 
         Args:
             pdf_path (str): Path to the PDF file.
 
         Returns:
-            str: Extracted text from the PDF.
+            str: Base64 UTF-8 encoded image of the first page, or None on failure.
         """
-        logger.info(f"Extracting text from PDF: {pdf_path}")
+        logger.info(f"Extracting first page from PDF: {pdf_path}")
 
         try:
             images = convert_from_path(pdf_path, dpi=300)
 
-            full_text = []
-            for i, image in enumerate(images):
-                logger.info(f"Processing page {i + 1}/{len(images)}")
-                text = pytesseract.image_to_string(image, lang='eng')
-                full_text.append(text)
-
-            combined_text = '\n\n'.join(full_text)
-            logger.info(f"Extracted {len(combined_text)} characters from {len(images)} pages")
-            return combined_text
+            # return base64 utf-8 image of the first page
+            if images:
+                buffered = BytesIO()
+                images[0].save(buffered, format="JPEG")
+                return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
         except Exception as e:
-            logger.error(f"Error during OCR: {e}")
-            return ""
+            logger.error(f"Error extracting image from PDF: {e}")
+            return None
 
-    def generate_filename_with_ai(self, ocr_text: str, original_filename: str) -> str:
+    def generate_filename(self, image: Image) -> str:
         """
         Generate a descriptive filename using AI based on OCR text.
 
         Args:
-            ocr_text (str): Text extracted from the document.
-            original_filename (str): Original filename of the document.
+            image (Image): Text extracted from the document.
 
         Returns:
             str: AI-generated filename with a .pdf extension.
         """
         logger.info("Generating filename with AI...")
 
-        if not ocr_text.strip():
-            logger.warning("No OCR text available, using timestamp")
-            return f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-
         try:
-            text_preview = ocr_text[:2000] if len(ocr_text) > 2000 else ocr_text
-
             prompt = f"""Based on the following scanned document text, generate a concise, descriptive filename (without extension).
 The filename should:
 - Be 3-6 words maximum
@@ -101,29 +88,20 @@ The filename should:
 - Be descriptive of the document's content
 - Use uppercase letters
 - Not include special characters except underscores and hyphens
-- Include relevant date if mentioned in the document at the end (format: DD-MM-YYYY)
-
-Document text:
-{text_preview}
+- Include relevant name if mentioned in the document
+- Include relevant date if mentioned in the document (format: DD-MM-YYYY)
 
 Respond with ONLY the filename, nothing else."""
 
             response = ollama.chat(
                 model=self.ollama_model,
-                messages=[{'role': 'user', 'content': prompt}]
+                messages=[{'role': 'user', 'content': prompt, 'images': [image]}],
             )
 
             suggested_name = response['message']['content'].strip()
 
-            suggested_name = suggested_name.replace(' ', '_')
-            suggested_name = ''.join(c for c in suggested_name if c.isalnum() or c in '_-')
-            suggested_name = suggested_name.lower()
-
-            if len(suggested_name) < 5:
-                suggested_name = f"{suggested_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
             filename = f"{suggested_name}.pdf"
-            logger.info(f"AI suggested filename: {filename}")
+            logger.info(f"Agent suggested filename: {filename}")
             return filename
 
         except Exception as e:
@@ -199,9 +177,9 @@ Respond with ONLY the filename, nothing else."""
         logger.info(f"Processing document: {pdf_path}")
 
         try:
-            ocr_text = self.extract_text_from_pdf(pdf_path)
+            image = self.extract_image(pdf_path)
 
-            new_filename = self.generate_filename_with_ai(ocr_text, os.path.basename(pdf_path))
+            new_filename = self.generate_filename(image)
 
             if self.upload_to_nextcloud(pdf_path, new_filename):
                 logger.info(f"Document processing completed successfully: {new_filename}")
