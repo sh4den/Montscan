@@ -89,7 +89,7 @@ The filename should:
 - Use uppercase letters
 - Not include special characters except underscores and hyphens
 - Include relevant name if mentioned in the document
-- Include relevant date if mentioned in the document (format: DD-MM-YYYY)
+- Include relevant date if mentioned in the document at the end of the filename (format: DD-MM-YYYY)
 
 Respond with ONLY the filename, nothing else."""
 
