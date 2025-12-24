@@ -3,7 +3,7 @@
 </div>
 
 <div align="center">
-  <p><b>Montscan</b>: Automated scanner document processor with OCR, AI naming, and Nextcloud upload! ✨</p>
+  <p><b>Montscan</b>: Automated scanner document processor with Vision AI, AI naming, and Nextcloud upload! ✨</p>
 </div>
 
 ---
@@ -11,7 +11,7 @@
 ## ✨ Features
 
 - 📡 **FTP Server** - Receives documents from network scanners
-- 🔍 **OCR Processing** - Extracts text from scanned PDFs using Tesseract
+- 👁️ **Vision AI Processing** - Analyzes scanned documents using Ollama vision models
 - 🤖 **AI-Powered Naming** - Generates descriptive filenames in French using Ollama
 - ☁️ **Nextcloud Integration** - Automatically uploads processed documents via WebDAV
 - 🎨 **Colorful CLI** - Beautiful startup banner with configuration overview
@@ -34,9 +34,8 @@
 ## 🔧 Prerequisites
 
 - **Python 3.14+**
-- **Tesseract OCR** - [Installation guide](https://github.com/tesseract-ocr/tesseract)
 - **Poppler** - For PDF to image conversion
-- **Ollama** - [Installation guide](https://ollama.ai/) with a language model (e.g., `ministral-3:3b`)
+- **Ollama** - [Installation guide](https://ollama.ai/) with a vision model (e.g., `llava`, `llama3.2-vision`)
 - **Nextcloud instance** (optional) - For cloud storage integration
 
 ---
@@ -57,20 +56,16 @@
    uv sync
    ```
 
-3. **Install Tesseract OCR**
-   - **Windows**: Download from [GitHub Releases](https://github.com/UB-Mannheim/tesseract/wiki)
-   - **Linux**: `sudo apt-get install tesseract-ocr`
-   - **macOS**: `brew install tesseract`
-
-4. **Install Poppler**
+3. **Install Poppler**
    - **Windows**: Download from [GitHub Releases](https://github.com/oschwartz10612/poppler-windows/releases)
    - **Linux**: `sudo apt-get install poppler-utils`
    - **macOS**: `brew install poppler`
 
-5. **Set up Ollama**
+4. **Set up Ollama with a vision model**
    ```bash
    # Install Ollama from https://ollama.ai/
-   ollama pull llama3.2
+   ollama pull llava
+   # or any other vision-capable model
    ```
 
 ---
@@ -89,8 +84,7 @@
 | `NEXTCLOUD_PASSWORD` | Nextcloud password | - |
 | `NEXTCLOUD_UPLOAD_PATH` | Upload path in Nextcloud | `/Documents/Scanned` |
 | `OLLAMA_HOST` | Ollama service URL | `http://localhost:11434` |
-| `OLLAMA_MODEL` | Ollama model to use | `llama3.2` |
-| `TESSERACT_PATH` | Path to Tesseract executable | System PATH |
+| `OLLAMA_MODEL` | Ollama vision model to use | `llava` |
 
 ---
 
@@ -188,13 +182,9 @@ docker run -d \
 - **Solution**: Check that the FTP port (default 21) is not blocked by firewall
 - On Windows, you may need to allow Python through the firewall
 
-#### OCR Not Working
-- **Solution**: Ensure Tesseract is installed and `TESSERACT_PATH` is set correctly
-- Test with: `tesseract --version`
-
 #### AI Naming Fails
-- **Solution**: Verify Ollama is running and the model is downloaded
-- Test with: `ollama list` and `ollama run llama3.2 "Hello"`
+- **Solution**: Verify Ollama is running and a vision model is downloaded
+- Test with: `ollama list` and ensure you have a vision-capable model (e.g., `llava`, `llama3.2-vision`)
 
 #### Nextcloud Upload Fails
 - **Solution**: Check Nextcloud credentials and URL

@@ -4,7 +4,6 @@ import requests
 import base64
 import os
 
-from PIL.Image import Image
 from requests.auth import HTTPBasicAuth
 from datetime import datetime
 from io import BytesIO
@@ -14,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 class Agent:
     """
-    Handles OCR, AI naming, and Nextcloud upload of scanned documents.
+    Handles vision AI analysis, AI naming, and Nextcloud upload of scanned documents.
 
     This class provides methods to:
-    - Extract text from PDF files using OCR.
-    - Generate descriptive filenames using AI.
+    - Extract images from PDF files for vision analysis.
+    - Generate descriptive filenames using AI vision models.
     - Upload processed files to Nextcloud via WebDAV.
     """
 
@@ -28,12 +27,11 @@ class Agent:
 
         Environment variables:
         - OLLAMA_HOST: Host URL for the Ollama AI service.
-        - OLLAMA_MODEL: Model name for Ollama AI.
+        - OLLAMA_MODEL: Vision model name for Ollama AI.
         - NEXTCLOUD_URL: Base URL for Nextcloud.
         - NEXTCLOUD_USERNAME: Username for Nextcloud authentication.
         - NEXTCLOUD_PASSWORD: Password for Nextcloud authentication.
         - NEXTCLOUD_UPLOAD_PATH: Path in Nextcloud to upload files.
-        - TESSERACT_PATH: Path to the Tesseract OCR executable.
         """
         self.ollama_host = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
         self.ollama_model = os.getenv('OLLAMA_MODEL', 'ministral-3:3b-instruct-2512-q4_K_M')
@@ -67,12 +65,12 @@ class Agent:
             logger.error(f"Error extracting image from PDF: {e}")
             return None
 
-    def generate_filename(self, image: Image) -> str:
+    def generate_filename(self, image: str) -> str:
         """
-        Generate a descriptive filename using AI based on OCR text.
+        Generate a descriptive filename using AI vision model based on document image.
 
         Args:
-            image (Image): Text extracted from the document.
+            image (str): Base64 encoded image of the document.
 
         Returns:
             str: AI-generated filename with a .pdf extension.
@@ -80,7 +78,7 @@ class Agent:
         logger.info("Generating filename with AI...")
 
         try:
-            prompt = f"""Based on the following scanned document text, generate a concise, descriptive filename (without extension).
+            prompt = """Based on this scanned document image, generate a concise, descriptive filename (without extension).
 The filename should:
 - Be 3-6 words maximum
 - In french
@@ -164,8 +162,8 @@ Respond with ONLY the filename, nothing else."""
         Process a document through the complete pipeline.
 
         Steps:
-        1. Extract text from the PDF using OCR.
-        2. Generate a descriptive filename using AI.
+        1. Extract first page image from the PDF.
+        2. Generate a descriptive filename using AI vision model.
         3. Upload the file to Nextcloud.
 
         Args:
