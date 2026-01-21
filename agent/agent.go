@@ -26,8 +26,8 @@ func (a *Agent) ProcessDocument(pdfPath string) bool {
 
 	newFilename := a.GenerateFilename(image)
 
-	if err := a.UploadToNextcloud(pdfPath, newFilename); err != nil {
-		log.Printf("Failed to upload to Nextcloud: %v", err)
+	if err := a.UploadToWebDAV(pdfPath, newFilename); err != nil {
+		log.Printf("Failed to upload to WebDAV: %v", err)
 		return false
 	}
 
