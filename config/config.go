@@ -13,11 +13,11 @@ type Config struct {
 	FTPPassword  string
 	FTPUploadDir string
 
-	// NEXTCLOUD Settings
-	NextcloudURL      string
-	NextcloudUsername string
-	NextcloudPassword string
-	NextcloudPath     string
+	// WebDAV Settings
+	WebDAVURL      string
+	WebDAVUsername string
+	WebDAVPassword string
+	WebDAVPath     string
 
 	// OLLAMA Settings
 	OllamaHost  string
@@ -31,17 +31,17 @@ func Load() *Config {
 	}
 
 	return &Config{
-		FTPHost:           getEnv("FTP_HOST", "0.0.0.0"),
-		FTPPort:           port,
-		FTPUsername:       getEnv("FTP_USERNAME", "scanner"),
-		FTPPassword:       getEnv("FTP_PASSWORD", "scanner123"),
-		FTPUploadDir:      getEnv("FTP_UPLOAD_DIR", "./scans"),
-		NextcloudURL:      os.Getenv("NEXTCLOUD_URL"),
-		NextcloudUsername: os.Getenv("NEXTCLOUD_USERNAME"),
-		NextcloudPassword: os.Getenv("NEXTCLOUD_PASSWORD"),
-		NextcloudPath:     getEnv("NEXTCLOUD_UPLOAD_PATH", "/Documents/Scanned"),
-		OllamaHost:        getEnv("OLLAMA_HOST", "http://localhost:11434"),
-		OllamaModel:       getEnv("OLLAMA_MODEL", "llava"),
+		FTPHost:        getEnv("FTP_HOST", "0.0.0.0"),
+		FTPPort:        port,
+		FTPUsername:    getEnv("FTP_USERNAME", "scanner"),
+		FTPPassword:    getEnv("FTP_PASSWORD", "scanner123"),
+		FTPUploadDir:   getEnv("FTP_UPLOAD_DIR", "./scans"),
+		WebDAVURL:      os.Getenv("WEBDAV_URL"),
+		WebDAVUsername: os.Getenv("WEBDAV_USERNAME"),
+		WebDAVPassword: os.Getenv("WEBDAV_PASSWORD"),
+		WebDAVPath:     getEnv("WEBDAV_UPLOAD_PATH", "/Documents/Scanned"),
+		OllamaHost:     getEnv("OLLAMA_HOST", "http://localhost:11434"),
+		OllamaModel:    getEnv("OLLAMA_MODEL", "llava"),
 	}
 }
 

@@ -35,12 +35,12 @@ func printBanner(cfg *config.Config) {
 	fmt.Printf("   %s└─%s Upload Directory: %s\n", white(""), white(""), cyan(uploadPath))
 	fmt.Println()
 
-	if cfg.NextcloudURL != "" {
-		fmt.Println(green("☁️  Nextcloud Integration:"))
-		fmt.Printf("   %s└─%s URL: %s\n", white(""), white(""), cyan(cfg.NextcloudURL))
+	if cfg.WebDAVURL != "" {
+		fmt.Println(green("☁️  WebDAV Integration:"))
+		fmt.Printf("   %s└─%s URL: %s\n", white(""), white(""), cyan(cfg.WebDAVURL))
 	} else {
-		fmt.Println(yellow("⚠️  Nextcloud Integration:"))
-		fmt.Printf("   %s└─%s %s\n", white(""), white(""), yellow("Not configured (NEXTCLOUD_URL not set)"))
+		fmt.Println(yellow("⚠️  WebDAV Integration:"))
+		fmt.Printf("   %s└─%s %s\n", white(""), white(""), yellow("Not configured (WEBDAV_URL not set)"))
 	}
 	fmt.Println()
 

@@ -13,7 +13,7 @@
 - 📡 **FTP Server** - Receives documents from network scanners
 - 👁️ **Vision AI Processing** - Analyzes scanned documents using Ollama vision models
 - 🤖 **AI-Powered Naming** - Generates descriptive filenames in French using Ollama
-- ☁️ **Nextcloud Integration** - Automatically uploads processed documents via WebDAV
+- ☁️ **WebDAV Integration** - Automatically uploads processed documents via WebDAV (supports Nextcloud, ownCloud, and other WebDAV servers)
 - 🎨 **Colorful CLI** - Beautiful startup banner with configuration overview
 - 🐳 **Docker Support** - Easy deployment with Docker Compose
 
@@ -36,7 +36,7 @@
 - **Go 1.24+**
 - **Poppler** (pdftoppm) or **ImageMagick** - For PDF to image conversion
 - **Ollama** - [Installation guide](https://ollama.ai/) with a vision model (e.g., `llava`, `llama3.2-vision`)
-- **Nextcloud instance** (optional) - For cloud storage integration
+- **WebDAV server** (optional) - For cloud storage integration (supports Nextcloud, ownCloud, and other WebDAV-compatible servers)
 
 ---
 
@@ -78,10 +78,10 @@
 | `FTP_USERNAME` | FTP authentication username | `scanner` |
 | `FTP_PASSWORD` | FTP authentication password | `scanner123` |
 | `FTP_UPLOAD_DIR` | Local directory for uploaded files | `./scans` |
-| `NEXTCLOUD_URL` | Nextcloud instance URL | - |
-| `NEXTCLOUD_USERNAME` | Nextcloud username | - |
-| `NEXTCLOUD_PASSWORD` | Nextcloud password | - |
-| `NEXTCLOUD_UPLOAD_PATH` | Upload path in Nextcloud | `/Documents/Scanned` |
+| `WEBDAV_URL` | WebDAV server URL | - |
+| `WEBDAV_USERNAME` | WebDAV username | - |
+| `WEBDAV_PASSWORD` | WebDAV password | - |
+| `WEBDAV_UPLOAD_PATH` | Upload path on WebDAV server | `/Documents/Scanned` |
 | `OLLAMA_HOST` | Ollama service URL | `http://localhost:11434` |
 | `OLLAMA_MODEL` | Ollama vision model to use | `llava` |
 
@@ -95,9 +95,9 @@
 # Set environment variables (optional, defaults are provided)
 export FTP_USERNAME=your-username
 export FTP_PASSWORD=your-password
-export NEXTCLOUD_URL=https://your-nextcloud.com
-export NEXTCLOUD_USERNAME=your-nc-user
-export NEXTCLOUD_PASSWORD=your-nc-password
+export WEBDAV_URL=https://your-webdav-server.com
+export WEBDAV_USERNAME=your-webdav-user
+export WEBDAV_PASSWORD=your-webdav-password
 
 # Run the application
 ./montscan
@@ -116,8 +116,8 @@ You should see a colorful startup banner:
    ├─ Username: your-username
    └─ Upload Directory: /path/to/scans
 
-☁️  Nextcloud Integration:
-   └─ URL: https://your-nextcloud.com
+☁️  WebDAV Integration:
+   └─ URL: https://your-webdav-server.com
 
 🤖 AI Processing (Ollama):
    ├─ Host: http://localhost:11434
@@ -176,6 +176,9 @@ docker run -d \
   -v ./scans:/app/scans \
   -e FTP_USERNAME=scanner \
   -e FTP_PASSWORD=scanner123 \
+  -e WEBDAV_URL=https://your-webdav-server.com \
+  -e WEBDAV_USERNAME=your-webdav-user \
+  -e WEBDAV_PASSWORD=your-webdav-password \
   -e OLLAMA_HOST=http://host.docker.internal:11434 \
   --name montscan \
   montscan
@@ -195,10 +198,11 @@ docker run -d \
 - **Solution**: Verify Ollama is running and a vision model is downloaded
 - Test with: `ollama list` and ensure you have a vision-capable model (e.g., `llava`, `llama3.2-vision`)
 
-#### Nextcloud Upload Fails
-- **Solution**: Check Nextcloud credentials and URL
-- Ensure the upload path exists in Nextcloud
-- Verify WebDAV is enabled on your Nextcloud instance
+#### WebDAV Upload Fails
+- **Solution**: Check WebDAV credentials and URL
+- Ensure the upload path exists on your WebDAV server
+- For Nextcloud: Verify WebDAV is enabled on your Nextcloud instance
+- For other WebDAV servers: Ensure the URL points directly to the WebDAV endpoint
 
 #### Poppler/ImageMagick Not Found
 - **Solution**: Install Poppler or ImageMagick and ensure it's in your system PATH
