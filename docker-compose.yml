@@ -37,11 +37,6 @@ services:
     networks:
       - montscan-network
     command: ["/bin/sh", "-lc", "ollama pull \"$OLLAMA_MODEL\" && exec ollama serve"]
-
-    # Pull OLLAMA_MODEL before starting the container to ensure it's available
-
-
-
     # Uncomment if you have NVIDIA GPU
     # deploy:
     #   resources:
