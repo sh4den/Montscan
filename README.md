@@ -81,6 +81,7 @@
 | `WEBDAV_URL` | WebDAV server URL | - |
 | `WEBDAV_USERNAME` | WebDAV username | - |
 | `WEBDAV_PASSWORD` | WebDAV password | - |
+| `WEBDAV_INSECURE` | Skip TLS verification for WebDAV (true/false) | `false` |
 | `WEBDAV_UPLOAD_PATH` | Upload path on WebDAV server | `/Documents/Scanned` |
 | `OLLAMA_HOST` | Ollama service URL | `http://localhost:11434` |
 | `OLLAMA_MODEL` | Ollama vision model to use | `llava` |
