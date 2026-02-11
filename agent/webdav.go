@@ -1,8 +1,10 @@
 package agent
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path"
 
@@ -18,6 +20,14 @@ func (a *Agent) UploadToWebDAV(localPath, remoteFilename string) error {
 	webdavURL := a.config.WebDAVURL
 
 	client := gowebdav.NewClient(webdavURL, a.config.WebDAVUsername, a.config.WebDAVPassword)
+	if a.config.WebDAVInsecure {
+		log.Printf("Warning: InsecureSkipVerify is enabled for WebDAV client. This is not recommended for production environments.")
+		transport := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+
+		client.SetTransport(transport)
+	}
 
 	remotePath := a.config.WebDAVPath
 	if err := client.MkdirAll(remotePath, 0755); err != nil {
@@ -30,7 +40,7 @@ func (a *Agent) UploadToWebDAV(localPath, remoteFilename string) error {
 	}
 
 	fullRemotePath := path.Join(remotePath, remoteFilename)
-	log.Printf("Uploading to WebDAV: %s", fullRemotePath)
+	log.Printf("Uploading to WebDAV: %s", webdavURL+fullRemotePath)
 
 	if err := client.Write(fullRemotePath, data, 0644); err != nil {
 		return fmt.Errorf("failed to upload to WebDAV: %w", err)

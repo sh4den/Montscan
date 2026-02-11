@@ -18,6 +18,7 @@ type Config struct {
 	WebDAVUsername string
 	WebDAVPassword string
 	WebDAVPath     string
+	WebDAVInsecure bool
 
 	// OLLAMA Settings
 	OllamaHost  string
@@ -40,6 +41,7 @@ func Load() *Config {
 		WebDAVUsername: os.Getenv("WEBDAV_USERNAME"),
 		WebDAVPassword: os.Getenv("WEBDAV_PASSWORD"),
 		WebDAVPath:     getEnv("WEBDAV_UPLOAD_PATH", "/Documents/Scanned"),
+		WebDAVInsecure: getEnv("WEBDAV_INSECURE", "false") == "true",
 		OllamaHost:     getEnv("OLLAMA_HOST", "http://localhost:11434"),
 		OllamaModel:    getEnv("OLLAMA_MODEL", "llava"),
 	}

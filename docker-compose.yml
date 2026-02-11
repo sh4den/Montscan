@@ -15,7 +15,8 @@ services:
       - WEBDAV_URL=${WEBDAV_URL}
       - WEBDAV_USERNAME=${WEBDAV_USERNAME}
       - WEBDAV_PASSWORD=${WEBDAV_PASSWORD}
-      - WEBDAV_UPLOAD_PATH=${WEBDAV_UPLOAD_PATH:-/Documents/Scanned}
+      - WEBDAV_INSECURE=${WEBDAV_INSECURE:-false}
+      - WEBDAV_UPLOAD_PATH=${WEBDAV_UPLOAD_PATH:-/Scans}
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llava}
     volumes:
@@ -35,6 +36,12 @@ services:
       - ollama-data:/root/.ollama
     networks:
       - montscan-network
+    command: ["/bin/sh", "-lc", "ollama pull \"$OLLAMA_MODEL\" && exec ollama serve"]
+
+    # Pull OLLAMA_MODEL before starting the container to ensure it's available
+
+
+
     # Uncomment if you have NVIDIA GPU
     # deploy:
     #   resources:
