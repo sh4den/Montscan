@@ -1,3 +1,6 @@
+> # ⚠️ Warning
+> **This branch is no longer maintained, please use the main branch.**
+
 <div align="center">
   <img width="256" height="256" alt="image" src="https://github.com/user-attachments/assets/ced68675-3338-4e7e-b9a0-5a9fc887aeac" />
 </div>
