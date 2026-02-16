@@ -47,7 +47,7 @@ Respond with ONLY the filename, nothing else.`
 func (a *Agent) GenerateFilename(image string) string {
 	log.Printf("Generating filename with AI...")
 
-	filenamePrompt := fmt.Sprintf(filenamePromptTemplate, a.config.PromptLanguage)
+	filenamePrompt := fmt.Sprintf(filenamePromptTemplate, a.config.Language)
 
 	req := OllamaChatRequest{
 		Model: a.config.OllamaModel,

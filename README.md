@@ -85,7 +85,7 @@
 | `WEBDAV_UPLOAD_PATH` | Upload path on WebDAV server | `/Documents/Scanned`     |
 | `OLLAMA_HOST` | Ollama service URL | `http://localhost:11434` |
 | `OLLAMA_MODEL` | Ollama vision model to use | `llava`                  |
-| `PROMPT_LANGUAGE` | Language for AI-generated filenames | `english`                |
+| `LANGUAGE` | Language for AI-generated filenames | `english`                |
 
 ---
 

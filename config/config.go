@@ -21,9 +21,9 @@ type Config struct {
 	WebDAVInsecure bool
 
 	// OLLAMA Settings
-	OllamaHost     string
-	OllamaModel    string
-	PromptLanguage string
+	OllamaHost  string
+	OllamaModel string
+	Language    string
 }
 
 func Load() *Config {
@@ -45,7 +45,7 @@ func Load() *Config {
 		WebDAVInsecure: getEnv("WEBDAV_INSECURE", "false") == "true",
 		OllamaHost:     getEnv("OLLAMA_HOST", "http://localhost:11434"),
 		OllamaModel:    getEnv("OLLAMA_MODEL", "llava"),
-		PromptLanguage: getEnv("PROMPT_LANGUAGE", "english"),
+		Language:       getEnv("LANGUAGE", "english"),
 	}
 }
 
