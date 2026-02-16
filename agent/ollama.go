@@ -29,10 +29,10 @@ type OllamaChatResponse struct {
 	} `json:"message"`
 }
 
-const filenamePrompt = `Based on this scanned document image, generate a concise, descriptive filename (without extension).
+const filenamePromptTemplate = `Based on this scanned document image, generate a concise, descriptive filename (without extension).
 The filename should:
 - Be 3-6 words maximum
-- In french
+- In %s
 - Use underscores instead of spaces
 - Be descriptive of the document's content
 - Use uppercase letters
@@ -46,6 +46,8 @@ Respond with ONLY the filename, nothing else.`
 
 func (a *Agent) GenerateFilename(image string) string {
 	log.Printf("Generating filename with AI...")
+
+	filenamePrompt := fmt.Sprintf(filenamePromptTemplate, a.config.PromptLanguage)
 
 	req := OllamaChatRequest{
 		Model: a.config.OllamaModel,

@@ -19,6 +19,7 @@ services:
       - WEBDAV_UPLOAD_PATH=${WEBDAV_UPLOAD_PATH:-/Scans}
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llava}
+      - PROMPT_LANGUAGE=${PROMPT_LANGUAGE:-english}
     volumes:
       - ./scans:/app/scans
     extra_hosts:

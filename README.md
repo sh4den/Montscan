@@ -71,20 +71,21 @@
 
 ### ⚙️ Configuration Options
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `FTP_HOST` | FTP server host address | `0.0.0.0` |
-| `FTP_PORT` | FTP server port | `21` |
-| `FTP_USERNAME` | FTP authentication username | `scanner` |
-| `FTP_PASSWORD` | FTP authentication password | `scanner123` |
-| `FTP_UPLOAD_DIR` | Local directory for uploaded files | `./scans` |
-| `WEBDAV_URL` | WebDAV server URL | - |
-| `WEBDAV_USERNAME` | WebDAV username | - |
-| `WEBDAV_PASSWORD` | WebDAV password | - |
-| `WEBDAV_INSECURE` | Skip TLS verification for WebDAV (true/false) | `false` |
-| `WEBDAV_UPLOAD_PATH` | Upload path on WebDAV server | `/Documents/Scanned` |
+| Variable | Description | Default                  |
+|----------|-------------|--------------------------|
+| `FTP_HOST` | FTP server host address | `0.0.0.0`                |
+| `FTP_PORT` | FTP server port | `21`                     |
+| `FTP_USERNAME` | FTP authentication username | `scanner`                |
+| `FTP_PASSWORD` | FTP authentication password | `scanner123`             |
+| `FTP_UPLOAD_DIR` | Local directory for uploaded files | `./scans`                |
+| `WEBDAV_URL` | WebDAV server URL | -                        |
+| `WEBDAV_USERNAME` | WebDAV username | -                        |
+| `WEBDAV_PASSWORD` | WebDAV password | -                        |
+| `WEBDAV_INSECURE` | Skip TLS verification for WebDAV (true/false) | `false`                  |
+| `WEBDAV_UPLOAD_PATH` | Upload path on WebDAV server | `/Documents/Scanned`     |
 | `OLLAMA_HOST` | Ollama service URL | `http://localhost:11434` |
-| `OLLAMA_MODEL` | Ollama vision model to use | `llava` |
+| `OLLAMA_MODEL` | Ollama vision model to use | `llava`                  |
+| `PROMPT_LANGUAGE` | Language for AI-generated filenames | `english`                |
 
 ---
 
