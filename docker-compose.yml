@@ -32,6 +32,8 @@ services:
     restart: unless-stopped
     ports:
       - "11434:11434"
+    environment:
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llava}
     volumes:
       - ollama-data:/root/.ollama
     networks:
