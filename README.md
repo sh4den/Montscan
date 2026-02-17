@@ -1,10 +1,18 @@
+> [!NOTE] 
+> Montscan is not fully production-ready and is currently in active development but is fairly usable.</br> 
+> It achieve **97.5%** success rate on a small test set of 1000 documents.
+
 <div align="center">
   <img width="256" height="256" alt="image" src="https://github.com/user-attachments/assets/ced68675-3338-4e7e-b9a0-5a9fc887aeac" />
 </div>
 
 <div align="center">
-  <p><b>Montscan</b>: Automated scanner document processor with Vision AI, AI naming, and Nextcloud upload! ✨</p>
+  <p><b>Montscan</b>: Automated scanner document processor with Vision AI, AI naming, and Webdav upload!</p>
 </div>
+
+<p align="center">
+  ⭐ If you find <b>Montscan</b> useful, please consider giving it a star it really helps the project grow!
+</p>
 
 ---
 
