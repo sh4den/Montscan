@@ -14,11 +14,20 @@ type Config struct {
 	FTPUploadDir string
 
 	// WebDAV Settings
+	WebDAVEnabled  bool
 	WebDAVURL      string
 	WebDAVUsername string
 	WebDAVPassword string
 	WebDAVPath     string
 	WebDAVInsecure bool
+
+	// Samba Settings
+	SambaEnabled  bool
+	SambaHost     string
+	SambaShare    string
+	SambaUsername string
+	SambaPassword string
+	SambaPath     string
 
 	// OLLAMA Settings
 	OllamaHost  string
@@ -38,11 +47,18 @@ func Load() *Config {
 		FTPUsername:    getEnv("FTP_USERNAME", "scanner"),
 		FTPPassword:    getEnv("FTP_PASSWORD", "scanner123"),
 		FTPUploadDir:   getEnv("FTP_UPLOAD_DIR", "./scans"),
+		WebDAVEnabled:  getEnv("SAMBA_ENABLED", "false") == "true",
 		WebDAVURL:      os.Getenv("WEBDAV_URL"),
 		WebDAVUsername: os.Getenv("WEBDAV_USERNAME"),
 		WebDAVPassword: os.Getenv("WEBDAV_PASSWORD"),
 		WebDAVPath:     getEnv("WEBDAV_UPLOAD_PATH", "/Documents/Scanned"),
 		WebDAVInsecure: getEnv("WEBDAV_INSECURE", "false") == "true",
+		SambaEnabled:   getEnv("SAMBA_ENABLED", "false") == "true",
+		SambaHost:      getEnv("SAMBA_HOST", "localhost"),
+		SambaShare:     getEnv("SAMBA_SHARE", "scans"),
+		SambaUsername:  os.Getenv("SAMBA_USERNAME"),
+		SambaPassword:  os.Getenv("SAMBA_PASSWORD"),
+		SambaPath:      getEnv("SAMBA_PATH", "scans"),
 		OllamaHost:     getEnv("OLLAMA_HOST", "http://localhost:11434"),
 		OllamaModel:    getEnv("OLLAMA_MODEL", "llava"),
 		Language:       getEnv("LANGUAGE", "english"),
