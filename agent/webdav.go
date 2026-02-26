@@ -13,13 +13,10 @@ import (
 
 func (a *Agent) UploadToWebDAV(localPath, remoteFilename string) error {
 	if a.config.WebDAVURL == "" || a.config.WebDAVUsername == "" || a.config.WebDAVPassword == "" {
-		return fmt.Errorf("WebDAV credentials not configured")
+		return fmt.Errorf("WebDAV configuration is incomplete")
 	}
 
-	// Use the WebDAV URL directly as provided by the user
-	webdavURL := a.config.WebDAVURL
-
-	client := gowebdav.NewClient(webdavURL, a.config.WebDAVUsername, a.config.WebDAVPassword)
+	client := gowebdav.NewClient(a.config.WebDAVURL, a.config.WebDAVUsername, a.config.WebDAVPassword)
 	if a.config.WebDAVInsecure {
 		log.Printf("Warning: InsecureSkipVerify is enabled for WebDAV client. This is not recommended for production environments.")
 		transport := &http.Transport{
@@ -40,7 +37,7 @@ func (a *Agent) UploadToWebDAV(localPath, remoteFilename string) error {
 	}
 
 	fullRemotePath := path.Join(remotePath, remoteFilename)
-	log.Printf("Uploading to WebDAV: %s", webdavURL+fullRemotePath)
+	log.Printf("Uploading to WebDAV: %s", a.config.WebDAVURL+fullRemotePath)
 
 	if err := client.Write(fullRemotePath, data, 0644); err != nil {
 		return fmt.Errorf("failed to upload to WebDAV: %w", err)
