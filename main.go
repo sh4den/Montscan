@@ -21,12 +21,6 @@ func printBanner(cfg *config.Config) {
 	green := color.New(color.FgGreen).SprintFunc()
 	white := color.New(color.FgWhite).SprintFunc()
 
-	fmt.Println()
-	fmt.Println(cyan("══════════════════════════════════════════════════════════════════════"))
-	fmt.Println(cyan("║") + yellow("  🖨️  MONTSCAN - Scanner Document Processing System  📄  ") + cyan("║"))
-	fmt.Println(cyan("══════════════════════════════════════════════════════════════════════"))
-	fmt.Println()
-
 	fmt.Println(green("📡 FTP Server Configuration:"))
 	uploadPath, _ := filepath.Abs(cfg.FTPUploadDir)
 	fmt.Printf("   %s├─%s Host: %s\n", white(""), white(""), cyan(cfg.FTPHost))
@@ -35,12 +29,24 @@ func printBanner(cfg *config.Config) {
 	fmt.Printf("   %s└─%s Upload Directory: %s\n", white(""), white(""), cyan(uploadPath))
 	fmt.Println()
 
-	if cfg.WebDAVURL != "" {
-		fmt.Println(green("☁️  WebDAV Integration:"))
+	if cfg.WebDAVEnabled {
+		fmt.Println(green("☁️  WebDAV Provider:"))
 		fmt.Printf("   %s└─%s URL: %s\n", white(""), white(""), cyan(cfg.WebDAVURL))
 	} else {
-		fmt.Println(yellow("⚠️  WebDAV Integration:"))
+		fmt.Println(yellow("⚠️  WebDAV Provider:"))
 		fmt.Printf("   %s└─%s %s\n", white(""), white(""), yellow("Not configured (WEBDAV_URL not set)"))
+	}
+	fmt.Println()
+
+	if cfg.SambaEnabled {
+		fmt.Println(green("🗂️  Samba Provider:"))
+		fmt.Printf("   %s├─%s Host: %s\n", white(""), white(""), cyan(cfg.SambaHost))
+		fmt.Printf("   %s├─%s Share: %s\n", white(""), white(""), cyan(cfg.SambaShare))
+		fmt.Printf("   %s├─%s Username: %s\n", white(""), white(""), cyan(cfg.SambaUsername))
+		fmt.Printf("   %s└─%s Path: %s\n", white(""), white(""), cyan(cfg.SambaPath))
+	} else {
+		fmt.Println(yellow("⚠️  Samba Provider:"))
+		fmt.Printf("   %s└─%s %s\n", white(""), white(""), yellow("Not configured (SAMBA_HOST or SAMBA_SHARE not set)"))
 	}
 	fmt.Println()
 
@@ -74,7 +80,7 @@ func main() {
 	printBanner(cfg)
 
 	if agent.CheckPDFTools() == "" {
-		log.Println("Warning: No PDF processing tools found. PDF extraction will fail.")
+		panic("PDF processing tools not found. Please install one of the supported tools (e.g., pdftotext, pdfinfo) and ensure it's in your system PATH.")
 	}
 
 	ag := agent.New(cfg)

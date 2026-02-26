@@ -26,9 +26,18 @@ func (a *Agent) ProcessDocument(pdfPath string) bool {
 
 	newFilename := a.GenerateFilename(image)
 
-	if err := a.UploadToWebDAV(pdfPath, newFilename); err != nil {
-		log.Printf("Failed to upload to WebDAV: %v", err)
-		return false
+	if a.config.WebDAVEnabled {
+		if err := a.UploadToWebDAV(pdfPath, newFilename); err != nil {
+			log.Printf("Failed to upload to WebDAV: %v", err)
+			return false
+		}
+	} else if a.config.SambaEnabled {
+		if err := a.UploadToSamba(pdfPath, newFilename); err != nil {
+			log.Printf("Failed to upload to Samba: %v", err)
+			return false
+		}
+	} else {
+		log.Printf("No upload provider configured, skipping upload for: %s", newFilename)
 	}
 
 	if err := os.Remove(pdfPath); err != nil {
