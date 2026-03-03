@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"Montscan/config"
+	"Montscan/providers"
 )
 
 type Agent struct {
@@ -27,12 +28,12 @@ func (a *Agent) ProcessDocument(pdfPath string) bool {
 	newFilename := a.GenerateFilename(image)
 
 	if a.config.WebDAVEnabled {
-		if err := a.UploadToWebDAV(pdfPath, newFilename); err != nil {
+		if err := providers.UploadToWebDAV(a.config, pdfPath, newFilename); err != nil {
 			log.Printf("Failed to upload to WebDAV: %v", err)
 			return false
 		}
 	} else if a.config.SambaEnabled {
-		if err := a.UploadToSamba(pdfPath, newFilename); err != nil {
+		if err := providers.UploadToSamba(a.config, pdfPath, newFilename); err != nil {
 			log.Printf("Failed to upload to Samba: %v", err)
 			return false
 		}
