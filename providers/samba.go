@@ -1,6 +1,7 @@
-package agent
+package providers
 
 import (
+	"Montscan/config"
 	"fmt"
 	"net"
 	"os"
@@ -8,20 +9,20 @@ import (
 	"github.com/hirochachacha/go-smb2"
 )
 
-func (a *Agent) UploadToSamba(localPath, remoteFilename string) error {
-	if a.config.SambaHost == "" || a.config.SambaUsername == "" || a.config.SambaPassword == "" || a.config.SambaShare == "" || a.config.SambaPath == "" {
+func UploadToSamba(cfg *config.Config, localPath, remoteFilename string) error {
+	if cfg.SambaHost == "" || cfg.SambaUsername == "" || cfg.SambaPassword == "" || cfg.SambaShare == "" || cfg.SambaPath == "" {
 		return fmt.Errorf("samba configuration is incomplete")
 	}
 
-	con, err := net.Dial("tcp", a.config.SambaHost+":445")
+	con, err := net.Dial("tcp", cfg.SambaHost+":445")
 	if err != nil {
 		return fmt.Errorf("failed to connect to SMB server: %v", err)
 	}
 
 	client := &smb2.Dialer{
 		Initiator: &smb2.NTLMInitiator{
-			User:     a.config.SambaUsername,
-			Password: a.config.SambaPassword,
+			User:     cfg.SambaUsername,
+			Password: cfg.SambaPassword,
 		},
 	}
 
@@ -30,7 +31,7 @@ func (a *Agent) UploadToSamba(localPath, remoteFilename string) error {
 		return fmt.Errorf("failed to connect to SMB server: %v", err)
 	}
 
-	fs, err := smbConn.Mount(a.config.SambaShare)
+	fs, err := smbConn.Mount(cfg.SambaShare)
 	if err != nil {
 		return fmt.Errorf("failed to mount smbfs: %v", err)
 	}
@@ -54,7 +55,7 @@ func (a *Agent) UploadToSamba(localPath, remoteFilename string) error {
 		}
 	}(localFile)
 
-	remotePath := a.config.SambaPath + "/" + remoteFilename
+	remotePath := cfg.SambaPath + "/" + remoteFilename
 	remoteFile, err := fs.Create(remotePath)
 	if err != nil {
 		return fmt.Errorf("failed to create remote file: %v", err)

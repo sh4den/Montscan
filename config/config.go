@@ -47,7 +47,7 @@ func Load() *Config {
 		FTPUsername:    getEnv("FTP_USERNAME", "scanner"),
 		FTPPassword:    getEnv("FTP_PASSWORD", "scanner123"),
 		FTPUploadDir:   getEnv("FTP_UPLOAD_DIR", "./scans"),
-		WebDAVEnabled:  getEnv("SAMBA_ENABLED", "false") == "true",
+		WebDAVEnabled:  getEnv("WEBDAV_ENABLED", "false") == "true",
 		WebDAVURL:      os.Getenv("WEBDAV_URL"),
 		WebDAVUsername: os.Getenv("WEBDAV_USERNAME"),
 		WebDAVPassword: os.Getenv("WEBDAV_PASSWORD"),
