@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path"
+	"strconv"
 
 	"github.com/hirochachacha/go-smb2"
 )
@@ -14,10 +16,14 @@ func UploadToSamba(cfg *config.Config, localPath, remoteFilename string) error {
 		return fmt.Errorf("samba configuration is incomplete")
 	}
 
-	con, err := net.Dial("tcp", cfg.SambaHost+":445")
+	addr := net.JoinHostPort(cfg.SambaHost, strconv.Itoa(cfg.SambaPort))
+	con, err := net.Dial("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to connect to SMB server: %v", err)
 	}
+	defer func() {
+		_ = con.Close()
+	}()
 
 	client := &smb2.Dialer{
 		Initiator: &smb2.NTLMInitiator{
@@ -30,6 +36,9 @@ func UploadToSamba(cfg *config.Config, localPath, remoteFilename string) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to SMB server: %v", err)
 	}
+	defer func() {
+		_ = smbConn.Logoff()
+	}()
 
 	fs, err := smbConn.Mount(cfg.SambaShare)
 	if err != nil {
@@ -55,7 +64,7 @@ func UploadToSamba(cfg *config.Config, localPath, remoteFilename string) error {
 		}
 	}(localFile)
 
-	remotePath := cfg.SambaPath + "/" + remoteFilename
+	remotePath := path.Join(cfg.SambaPath, remoteFilename)
 	remoteFile, err := fs.Create(remotePath)
 	if err != nil {
 		return fmt.Errorf("failed to create remote file: %v", err)

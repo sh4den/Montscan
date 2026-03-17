@@ -21,12 +21,29 @@ func printBanner(cfg *config.Config) {
 	green := color.New(color.FgGreen).SprintFunc()
 	white := color.New(color.FgWhite).SprintFunc()
 
-	fmt.Println(green("📡 FTP Server Configuration:"))
-	uploadPath, _ := filepath.Abs(cfg.FTPUploadDir)
-	fmt.Printf("   %s├─%s Host: %s\n", white(""), white(""), cyan(cfg.FTPHost))
-	fmt.Printf("   %s├─%s Port: %s\n", white(""), white(""), cyan(fmt.Sprintf("%d", cfg.FTPPort)))
-	fmt.Printf("   %s├─%s Username: %s\n", white(""), white(""), cyan(cfg.FTPUsername))
-	fmt.Printf("   %s└─%s Upload Directory: %s\n", white(""), white(""), cyan(uploadPath))
+	if cfg.FTPEnabled {
+		fmt.Println(green("📡 FTP Ingress:"))
+		uploadPath, _ := filepath.Abs(cfg.FTPUploadDir)
+		fmt.Printf("   %s├─%s Host: %s\n", white(""), white(""), cyan(cfg.FTPHost))
+		fmt.Printf("   %s├─%s Port: %s\n", white(""), white(""), cyan(fmt.Sprintf("%d", cfg.FTPPort)))
+		fmt.Printf("   %s├─%s Username: %s\n", white(""), white(""), cyan(cfg.FTPUsername))
+		fmt.Printf("   %s└─%s Upload Directory: %s\n", white(""), white(""), cyan(uploadPath))
+	} else {
+		fmt.Println(yellow("⚠️  FTP Ingress:"))
+		fmt.Printf("   %s└─%s %s\n", white(""), white(""), yellow("Disabled (FTP_ENABLED=false)"))
+	}
+	fmt.Println()
+
+	if cfg.SambaServerEnabled {
+		fmt.Println(green("📥 Samba Server:"))
+		fmt.Printf("   %s├─%s Host: %s\n", white(""), white(""), cyan(cfg.SambaServerHost))
+		fmt.Printf("   %s├─%s Port: %s\n", white(""), white(""), cyan(fmt.Sprintf("%d", cfg.SambaServerPort)))
+		fmt.Printf("   %s├─%s Share: %s\n", white(""), white(""), cyan(cfg.SambaServerShare))
+		fmt.Printf("   %s└─%s Path: %s\n", white(""), white(""), cyan(cfg.SambaServerPath))
+	} else {
+		fmt.Println(yellow("⚠️  Samba Server:"))
+		fmt.Printf("   %s└─%s %s\n", white(""), white(""), yellow("Disabled (SAMBA_SERVER_ENABLED=false)"))
+	}
 	fmt.Println()
 
 	if cfg.WebDAVEnabled {
@@ -41,6 +58,7 @@ func printBanner(cfg *config.Config) {
 	if cfg.SambaEnabled {
 		fmt.Println(green("🗂️  Samba Provider:"))
 		fmt.Printf("   %s├─%s Host: %s\n", white(""), white(""), cyan(cfg.SambaHost))
+		fmt.Printf("   %s├─%s Port: %s\n", white(""), white(""), cyan(fmt.Sprintf("%d", cfg.SambaPort)))
 		fmt.Printf("   %s├─%s Share: %s\n", white(""), white(""), cyan(cfg.SambaShare))
 		fmt.Printf("   %s├─%s Username: %s\n", white(""), white(""), cyan(cfg.SambaUsername))
 		fmt.Printf("   %s└─%s Path: %s\n", white(""), white(""), cyan(cfg.SambaPath))
@@ -79,6 +97,10 @@ func main() {
 
 	printBanner(cfg)
 
+	if !cfg.FTPEnabled && !cfg.SambaServerEnabled {
+		log.Fatal("No ingress server enabled. Enable FTP_ENABLED or SAMBA_SERVER_ENABLED.")
+	}
+
 	if agent.CheckPDFTools() == "" {
 		panic("PDF processing tools not found. Please install one of the supported tools (e.g., pdftotext, pdfinfo) and ensure it's in your system PATH.")
 	}
@@ -96,10 +118,24 @@ func main() {
 		os.Exit(0)
 	}()
 
-	fmt.Println(color.GreenString("🚀 Server is now running! Press Ctrl+C to stop."))
+	errCh := make(chan error, 2)
+
+	if cfg.FTPEnabled {
+		go func() {
+			errCh <- server.StartFTPServer(cfg, ag)
+		}()
+	}
+
+	if cfg.SambaServerEnabled {
+		go func() {
+			errCh <- server.StartSambaServer(cfg, ag)
+		}()
+	}
+
+	fmt.Println(color.GreenString("🚀 Ingress services are now running! Press Ctrl+C to stop."))
 	fmt.Println()
 
-	if err := server.StartFTPServer(cfg, ag); err != nil {
+	if err := <-errCh; err != nil {
 		color.Red("❌ Error starting server: %v", err)
 		log.Fatalf("Error starting server: %v", err)
 	}
