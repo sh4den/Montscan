@@ -1,6 +1,7 @@
-package agent
+package providers
 
 import (
+	"Montscan/config"
 	"crypto/tls"
 	"fmt"
 	"log"
@@ -11,16 +12,13 @@ import (
 	"github.com/studio-b12/gowebdav"
 )
 
-func (a *Agent) UploadToWebDAV(localPath, remoteFilename string) error {
-	if a.config.WebDAVURL == "" || a.config.WebDAVUsername == "" || a.config.WebDAVPassword == "" {
-		return fmt.Errorf("WebDAV credentials not configured")
+func UploadToWebDAV(cfg *config.Config, localPath, remoteFilename string) error {
+	if cfg.WebDAVURL == "" || cfg.WebDAVUsername == "" || cfg.WebDAVPassword == "" {
+		return fmt.Errorf("WebDAV configuration is incomplete")
 	}
 
-	// Use the WebDAV URL directly as provided by the user
-	webdavURL := a.config.WebDAVURL
-
-	client := gowebdav.NewClient(webdavURL, a.config.WebDAVUsername, a.config.WebDAVPassword)
-	if a.config.WebDAVInsecure {
+	client := gowebdav.NewClient(cfg.WebDAVURL, cfg.WebDAVUsername, cfg.WebDAVPassword)
+	if cfg.WebDAVInsecure {
 		log.Printf("Warning: InsecureSkipVerify is enabled for WebDAV client. This is not recommended for production environments.")
 		transport := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -29,7 +27,7 @@ func (a *Agent) UploadToWebDAV(localPath, remoteFilename string) error {
 		client.SetTransport(transport)
 	}
 
-	remotePath := a.config.WebDAVPath
+	remotePath := cfg.WebDAVPath
 	if err := client.MkdirAll(remotePath, 0755); err != nil {
 		log.Printf("Warning: could not create remote directory (may already exist): %v", err)
 	}
@@ -40,7 +38,7 @@ func (a *Agent) UploadToWebDAV(localPath, remoteFilename string) error {
 	}
 
 	fullRemotePath := path.Join(remotePath, remoteFilename)
-	log.Printf("Uploading to WebDAV: %s", webdavURL+fullRemotePath)
+	log.Printf("Uploading to WebDAV: %s", cfg.WebDAVURL+fullRemotePath)
 
 	if err := client.Write(fullRemotePath, data, 0644); err != nil {
 		return fmt.Errorf("failed to upload to WebDAV: %w", err)

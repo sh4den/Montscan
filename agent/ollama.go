@@ -38,7 +38,7 @@ The filename should:
 - Use uppercase letters
 - Not include special characters except underscores and hyphens
 - Include relevant name if mentioned in the document
-- Include relevant date if mentioned in the document at the end of the filename (format: dd-mm-yyyy)
+- Include relevant date if mentioned in the document at the end of the filename (format: yyyy-mm-dd)
 
 Example: INVOICE_AMAZON_JOHN_2023-11-15
 
