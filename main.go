@@ -21,6 +21,9 @@ func printBanner(cfg *config.Config) {
 	green := color.New(color.FgGreen).SprintFunc()
 	white := color.New(color.FgWhite).SprintFunc()
 
+	// debug print all "cfg"
+	fmt.Println(cfg)
+
 	if cfg.FTPEnabled {
 		fmt.Println(green("📡 FTP Ingress:"))
 		uploadPath, _ := filepath.Abs(cfg.FTPUploadDir)

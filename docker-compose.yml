@@ -7,12 +7,15 @@ services:
       - "21:21"
       - "21000-21010:21000-21010"
     environment:
+      # FTP server settings
       - FTP_ENABLED=${FTP_ENABLED:-true}
       - FTP_HOST=0.0.0.0
       - FTP_PORT=21
       - FTP_USERNAME=scanner
       - FTP_PASSWORD=${FTP_PASSWORD:-scanner123}
       - FTP_UPLOAD_DIR=/app/scans
+
+      # SMB/CIFS (Samba) settings
       - SAMBA_SERVER_ENABLED=${SAMBA_SERVER_ENABLED:-false}
       - SAMBA_SERVER_HOST=${SAMBA_SERVER_HOST:-127.0.0.1}
       - SAMBA_SERVER_PORT=${SAMBA_SERVER_PORT:-445}
@@ -23,14 +26,21 @@ services:
       - SAMBA_SERVER_POLL_INTERVAL_SEC=${SAMBA_SERVER_POLL_INTERVAL_SEC:-10}
       - SAMBA_SERVER_DELETE_AFTER_READ=${SAMBA_SERVER_DELETE_AFTER_READ:-true}
       - SAMBA_SERVER_WORK_DIR=${SAMBA_SERVER_WORK_DIR:-/app/scans}
+
+      # WebDAV settings
+      - WEBDAV_ENABLED=${WEBDAV_ENABLED:-false}
       - WEBDAV_URL=${WEBDAV_URL}
       - WEBDAV_USERNAME=${WEBDAV_USERNAME}
       - WEBDAV_PASSWORD=${WEBDAV_PASSWORD}
       - WEBDAV_INSECURE=${WEBDAV_INSECURE:-false}
       - WEBDAV_UPLOAD_PATH=${WEBDAV_UPLOAD_PATH:-/Scans}
+
+      # LLM settings
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llava}
-      - PROMPT_LANGUAGE=${PROMPT_LANGUAGE:-english}
+
+      # Prompt settings
+      - LANGUAGE=${LANGUAGE:-English}
     volumes:
       - ./scans:/app/scans
     extra_hosts:
@@ -50,7 +60,20 @@ services:
       - ollama-data:/root/.ollama
     networks:
       - montscan-network
-    command: ["/bin/sh", "-lc", "ollama pull \"$OLLAMA_MODEL\" && exec ollama serve"]
+    entrypoint:
+      - /bin/sh
+      - -lc
+      - |
+        ollama serve &
+        pid=$!
+
+        echo "Waiting for Ollama to start..."
+        sleep 5
+
+        echo "Pulling model: $OLLAMA_MODEL"
+        ollama pull "$OLLAMA_MODEL"
+
+        wait $pid
     # Uncomment if you have NVIDIA GPU
     # deploy:
     #   resources:
