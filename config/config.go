@@ -43,6 +43,12 @@ type Config struct {
 	SambaServerDeleteAfterRead bool
 	SambaServerWorkDir         string
 
+	// Folder watcher settings (local directory ingress)
+	FolderEnabled         bool
+	FolderInputDir        string
+	FolderOutputDir       string
+	FolderPollIntervalSec int
+
 	// OLLAMA Settings
 	OllamaHost  string
 	OllamaModel string
@@ -93,6 +99,11 @@ func Load() *Config {
 		SambaServerPollIntervalSec: sambaServerPoll,
 		SambaServerDeleteAfterRead: getEnvFallback("SAMBA_SERVER_DELETE_AFTER_READ", "SAMBA_INGRESS_DELETE_AFTER_READ", "true") == "true",
 		SambaServerWorkDir:         getEnvFallback("SAMBA_SERVER_WORK_DIR", "SAMBA_INGRESS_WORK_DIR", ftpUploadDir),
+
+		FolderEnabled:         getEnv("FOLDER_ENABLED", "false") == "true",
+		FolderInputDir:        getEnv("FOLDER_INPUT_DIR", "./input"),
+		FolderOutputDir:       os.Getenv("FOLDER_OUTPUT_DIR"),
+		FolderPollIntervalSec: getEnvInt("FOLDER_POLL_INTERVAL_SEC", 5),
 
 		OllamaHost:  getEnv("OLLAMA_HOST", "http://localhost:11434"),
 		OllamaModel: getEnv("OLLAMA_MODEL", "llava"),
