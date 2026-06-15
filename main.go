@@ -49,6 +49,23 @@ func printBanner(cfg *config.Config) {
 	}
 	fmt.Println()
 
+	if cfg.FolderEnabled {
+		inputAbs, _ := filepath.Abs(cfg.FolderInputDir)
+		fmt.Println(green("📂 Folder Watcher:"))
+		fmt.Printf("   %s├─%s Input: %s\n", white(""), white(""), cyan(inputAbs))
+		if cfg.FolderOutputDir != "" {
+			outputAbs, _ := filepath.Abs(cfg.FolderOutputDir)
+			fmt.Printf("   %s├─%s Output: %s\n", white(""), white(""), cyan(outputAbs))
+		} else {
+			fmt.Printf("   %s├─%s Output: %s\n", white(""), white(""), cyan("rename in place"))
+		}
+		fmt.Printf("   %s└─%s Poll interval: %s\n", white(""), white(""), cyan(fmt.Sprintf("%ds", cfg.FolderPollIntervalSec)))
+	} else {
+		fmt.Println(yellow("⚠️  Folder Watcher:"))
+		fmt.Printf("   %s└─%s %s\n", white(""), white(""), yellow("Disabled (FOLDER_ENABLED=false)"))
+	}
+	fmt.Println()
+
 	if cfg.WebDAVEnabled {
 		fmt.Println(green("☁️  WebDAV Provider:"))
 		fmt.Printf("   %s└─%s URL: %s\n", white(""), white(""), cyan(cfg.WebDAVURL))
@@ -100,8 +117,8 @@ func main() {
 
 	printBanner(cfg)
 
-	if !cfg.FTPEnabled && !cfg.SambaServerEnabled {
-		log.Fatal("No ingress server enabled. Enable FTP_ENABLED or SAMBA_SERVER_ENABLED.")
+	if !cfg.FTPEnabled && !cfg.SambaServerEnabled && !cfg.FolderEnabled {
+		log.Fatal("No ingress server enabled. Enable FTP_ENABLED, SAMBA_SERVER_ENABLED, or FOLDER_ENABLED.")
 	}
 
 	if agent.CheckPDFTools() == "" {
@@ -132,6 +149,12 @@ func main() {
 	if cfg.SambaServerEnabled {
 		go func() {
 			errCh <- server.StartSambaServer(cfg, ag)
+		}()
+	}
+
+	if cfg.FolderEnabled {
+		go func() {
+			errCh <- server.StartFolderServer(cfg, ag)
 		}()
 	}
 
