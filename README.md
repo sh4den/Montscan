@@ -206,17 +206,26 @@ export $(grep -v '^#' .env | xargs)
 
 1. **Update environment variables in `docker-compose.yml`**
 
-2. **Build and start the container**
+2. **(Optional) Enable GPU acceleration for Ollama**
+
+   By default, Ollama runs on CPU. To use an NVIDIA GPU, set in `.env`:
+   ```bash
+   COMPOSE_PROFILES=gpu
+   OLLAMA_GPU_COUNT=1
+   ```
+   Leave `COMPOSE_PROFILES=cpu` (or unset) for CPU-only.
+
+3. **Build and start the container**
    ```bash
    docker-compose up -d
    ```
 
-3. **View logs**
+4. **View logs**
    ```bash
    docker-compose logs -f
    ```
 
-4. **Stop the container**
+5. **Stop the container**
    ```bash
    docker-compose down
    ```
