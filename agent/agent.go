@@ -37,13 +37,18 @@ func (a *Agent) ProcessDocument(pdfPath string) bool {
 			log.Printf("Failed to upload to Samba: %v", err)
 			return false
 		}
+	} else if a.config.FolderEnabled {
+		if err := providers.MoveLocal(a.config, pdfPath, newFilename); err != nil {
+			log.Printf("Failed to move file locally: %v", err)
+			return false
+		}
 	} else {
 		log.Printf("No upload provider configured, skipping upload for: %s", newFilename)
 	}
 
-	if err := os.Remove(pdfPath); err != nil {
+	if err := os.Remove(pdfPath); err != nil && !os.IsNotExist(err) {
 		log.Printf("Error deleting file: %v", err)
-	} else {
+	} else if err == nil {
 		log.Printf("Deleted processed file: %s", pdfPath)
 	}
 
