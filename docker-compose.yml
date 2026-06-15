@@ -1,3 +1,30 @@
+x-ollama-common: &ollama-common
+  image: ollama/ollama:latest
+  container_name: ollama
+  restart: unless-stopped
+  ports:
+    - "11434:11434"
+  environment:
+    - OLLAMA_MODEL=${OLLAMA_MODEL:-llava}
+  volumes:
+    - ollama-data:/root/.ollama
+  networks:
+    - montscan-network
+  entrypoint:
+    - /bin/sh
+    - -lc
+    - |
+      ollama serve &
+      pid=$!
+
+      echo "Waiting for Ollama to start..."
+      sleep 5
+
+      echo "Pulling model: $OLLAMA_MODEL"
+      ollama pull "$OLLAMA_MODEL"
+
+      wait $pid
+
 services:
   montscan:
     build: .
@@ -48,40 +75,24 @@ services:
     networks:
       - montscan-network
 
+  # CPU-only Ollama (used when COMPOSE_PROFILES=cpu, the default)
   ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    environment:
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-llava}
-    volumes:
-      - ollama-data:/root/.ollama
-    networks:
-      - montscan-network
-    entrypoint:
-      - /bin/sh
-      - -lc
-      - |
-        ollama serve &
-        pid=$!
+    <<: *ollama-common
+    profiles:
+      - cpu
 
-        echo "Waiting for Ollama to start..."
-        sleep 5
-
-        echo "Pulling model: $OLLAMA_MODEL"
-        ollama pull "$OLLAMA_MODEL"
-
-        wait $pid
-    # Uncomment if you have NVIDIA GPU
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
+  # GPU-accelerated Ollama (used when COMPOSE_PROFILES=gpu)
+  ollama-gpu:
+    <<: *ollama-common
+    profiles:
+      - gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${OLLAMA_GPU_COUNT:-1}
+              capabilities: [gpu]
 
 volumes:
   ollama-data:
