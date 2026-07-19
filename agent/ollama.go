@@ -12,9 +12,14 @@ import (
 )
 
 type OllamaChatRequest struct {
-	Model    string          `json:"model"`
-	Messages []OllamaMessage `json:"messages"`
-	Stream   bool            `json:"stream"`
+	Model    string            `json:"model"`
+	Messages []OllamaMessage   `json:"messages"`
+	Stream   bool              `json:"stream"`
+	Options  OllamaChatOptions `json:"options,omitempty"`
+}
+
+type OllamaChatOptions struct {
+	NumCtx int `json:"num_ctx,omitempty"`
 }
 
 type OllamaMessage struct {
@@ -58,7 +63,8 @@ func (a *Agent) GenerateFilename(image string) string {
 				Images:  []string{image},
 			},
 		},
-		Stream: false,
+		Stream:  false,
+		Options: OllamaChatOptions{NumCtx: a.config.OllamaNumCtx},
 	}
 
 	jsonData, err := json.Marshal(req)

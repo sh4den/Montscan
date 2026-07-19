@@ -2,8 +2,10 @@ package providers
 
 import (
 	"Montscan/config"
+	"bytes"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -12,15 +14,48 @@ import (
 	"github.com/studio-b12/gowebdav"
 )
 
+// webdavDebugBodyLimit caps how much of an error response body gets logged.
+const webdavDebugBodyLimit = 4096
+
+// debugTransport logs the response body of failed WebDAV requests.
+// gowebdav only surfaces the status code (e.g. "Write foo.pdf: 502") and
+// discards the body, which usually holds the actual reason (proxy error
+// page, server error message, etc.), so we capture it here instead.
+type debugTransport struct {
+	base http.RoundTripper
+}
+
+func (t *debugTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := t.base.RoundTrip(req)
+	if err != nil {
+		log.Printf("WebDAV debug: %s %s failed: %v", req.Method, req.URL, err)
+		return resp, err
+	}
+
+	if resp.StatusCode >= 400 {
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, webdavDebugBodyLimit))
+		resp.Body.Close()
+		if readErr != nil {
+			log.Printf("WebDAV debug: %s %s -> %d (failed to read response body: %v)", req.Method, req.URL, resp.StatusCode, readErr)
+		} else {
+			log.Printf("WebDAV debug: %s %s -> %d, response body: %s", req.Method, req.URL, resp.StatusCode, body)
+		}
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+	}
+
+	return resp, err
+}
+
 func newWebDAVClient(cfg *config.Config) *gowebdav.Client {
 	client := gowebdav.NewClient(cfg.WebDAVURL, cfg.WebDAVUsername, cfg.WebDAVPassword)
+
+	var transport http.RoundTripper = http.DefaultTransport
 	if cfg.WebDAVInsecure {
-		transport := &http.Transport{
+		transport = &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
-
-		client.SetTransport(transport)
 	}
+	client.SetTransport(&debugTransport{base: transport})
 	return client
 }
 

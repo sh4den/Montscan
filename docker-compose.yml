@@ -67,6 +67,7 @@ services:
       # LLM settings
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llava}
+      - OLLAMA_NUM_CTX=${OLLAMA_NUM_CTX:-8192}
 
       # Prompt settings
       - LANGUAGE=${LANGUAGE:-English}
