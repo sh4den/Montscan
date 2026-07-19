@@ -50,9 +50,10 @@ type Config struct {
 	FolderPollIntervalSec int
 
 	// OLLAMA Settings
-	OllamaHost  string
-	OllamaModel string
-	Language    string
+	OllamaHost   string
+	OllamaModel  string
+	OllamaNumCtx int
+	Language     string
 }
 
 func Load() *Config {
@@ -105,9 +106,10 @@ func Load() *Config {
 		FolderOutputDir:       os.Getenv("FOLDER_OUTPUT_DIR"),
 		FolderPollIntervalSec: getEnvInt("FOLDER_POLL_INTERVAL_SEC", 5),
 
-		OllamaHost:  getEnv("OLLAMA_HOST", "http://localhost:11434"),
-		OllamaModel: getEnv("OLLAMA_MODEL", "llava"),
-		Language:    getEnv("LANGUAGE", "english"),
+		OllamaHost:   getEnv("OLLAMA_HOST", "http://localhost:11434"),
+		OllamaModel:  getEnv("OLLAMA_MODEL", "llava"),
+		OllamaNumCtx: getEnvInt("OLLAMA_NUM_CTX", 8192),
+		Language:     getEnv("LANGUAGE", "english"),
 	}
 }
 

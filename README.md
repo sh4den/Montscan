@@ -148,7 +148,8 @@ At least one **ingress** must be enabled. At least one **egress provider** shoul
 | Variable | Description | Default |
 |---|---|---|
 | `OLLAMA_HOST` | Ollama service URL | `http://localhost:11434` |
-| `OLLAMA_MODEL` | Vision model to use | `llava` |
+| `OLLAMA_MODEL` | Vision model to use | `qwen3-vl:8b` |
+| `OLLAMA_NUM_CTX` | Context window (tokens) requested per call | `8192` |
 | `LANGUAGE` | Language for AI-generated filenames | `english` |
 
 ---
