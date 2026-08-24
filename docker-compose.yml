@@ -27,7 +27,9 @@ x-ollama-common: &ollama-common
 
 services:
   montscan:
-    build: .
+    image: ghcr.io/sh4den/montscan:latest
+    # To build from source instead, uncomment the next line and run `docker compose build`
+    # build: .
     container_name: montscan
     restart: unless-stopped
     ports:
