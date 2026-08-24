@@ -1,0 +1,126 @@
+name: Publish release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  release:
+    if: >
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.ref == 'dev' &&
+      startsWith(github.event.pull_request.title, 'Update v')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract version from PR title
+        id: version
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [[ "$PR_TITLE" =~ ^Update\ v([0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?)$ ]]; then
+            echo "version=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::PR title '$PR_TITLE' does not match 'Update vX.Y.Z'"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+
+      - name: Check tag does not already exist
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::error::Tag $TAG already exists"
+            exit 1
+          fi
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          REPO_URL="https://github.com/${{ github.repository }}"
+
+          PREV_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="$PREV_TAG..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+
+          TMP=$(mktemp -d)
+          while IFS=$'\t' read -r sha short subject; do
+            line="- ${subject} ([\`${short}\`](${REPO_URL}/commit/${sha}))"
+            case "$subject" in
+              feat*)                                                        echo "$line" >> "$TMP/feat" ;;
+              fix*)                                                         echo "$line" >> "$TMP/fix" ;;
+              chore*|docs*|refactor*|test*|ci*|build*|perf*|style*|deps*)   echo "$line" >> "$TMP/maint" ;;
+              *)                                                            echo "$line" >> "$TMP/other" ;;
+            esac
+          done < <(git log --no-merges --pretty=tformat:"%H%x09%h%x09%s" "$RANGE")
+
+          COUNT=$(git rev-list --no-merges --count "$RANGE")
+          COMMITS="commits"
+          if [ "$COUNT" = "1" ]; then
+            COMMITS="commit"
+          fi
+
+          BODY=release-notes.md
+          {
+            echo "## What's Changed"
+            echo
+            if [ -n "$PREV_TAG" ]; then
+              echo "_${COUNT} ${COMMITS} since [\`${PREV_TAG}\`](${REPO_URL}/releases/tag/${PREV_TAG})_"
+            else
+              echo "_${COUNT} ${COMMITS} in the first release_"
+            fi
+            echo
+          } > "$BODY"
+
+          add_section() {
+            if [ -s "$2" ]; then
+              { echo "### $1"; echo; cat "$2"; echo; } >> "$BODY"
+            fi
+          }
+          add_section "🚀 Features"      "$TMP/feat"
+          add_section "🐛 Bug fixes"     "$TMP/fix"
+          add_section "🧹 Maintenance"   "$TMP/maint"
+          add_section "🔀 Other changes" "$TMP/other"
+
+          if [ -n "$PREV_TAG" ]; then
+            echo "**Full Changelog**: ${REPO_URL}/compare/${PREV_TAG}...${TAG}" >> "$BODY"
+          else
+            echo "**Full Changelog**: ${REPO_URL}/commits/${TAG}" >> "$BODY"
+          fi
+
+          echo "--- release notes ---"
+          cat "$BODY"
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.event.pull_request.merge_commit_sha }}" \
+            --title "📦 Montscan $TAG" \
+            --notes-file release-notes.md
+
+      - name: Publish versioned Docker image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          gh workflow run docker-publish.yml \
+            --repo "${{ github.repository }}" \
+            --ref "$TAG"

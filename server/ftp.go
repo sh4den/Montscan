@@ -10,6 +10,7 @@ import (
 
 	"Montscan/agent"
 	"Montscan/config"
+	"Montscan/providers"
 
 	ftpserver "github.com/goftp/server"
 )
@@ -84,7 +85,13 @@ func (d *ScannerDriver) DeleteFile(path string) error {
 }
 
 func (d *ScannerDriver) Rename(from, to string) error {
-	return os.Rename(d.realPath(from), d.realPath(to))
+	toReal := d.realPath(to)
+	if _, err := os.Stat(toReal); err == nil {
+		return fmt.Errorf("destination already exists: %s", to)
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	return os.Rename(d.realPath(from), toReal)
 }
 
 func (d *ScannerDriver) MakeDir(path string) error {
@@ -124,16 +131,30 @@ func (d *ScannerDriver) PutFile(path string, data io.Reader, appendData bool) (i
 		return 0, err
 	}
 
-	flag := os.O_WRONLY | os.O_CREATE
+	var f *os.File
+	var err error
 	if appendData {
-		flag |= os.O_APPEND
+		f, err = os.OpenFile(realPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		if err != nil {
+			return 0, err
+		}
 	} else {
-		flag |= os.O_TRUNC
-	}
-
-	f, err := os.OpenFile(realPath, flag, 0644)
-	if err != nil {
-		return 0, err
+		claimed := false
+		for attempt := 0; attempt < providers.MaxNameAttempts; attempt++ {
+			candidate := filepath.Join(dir, providers.CandidateName(filepath.Base(realPath), attempt))
+			f, err = os.OpenFile(candidate, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+			if err == nil {
+				realPath = candidate
+				claimed = true
+				break
+			}
+			if !os.IsExist(err) {
+				return 0, err
+			}
+		}
+		if !claimed {
+			return 0, fmt.Errorf("no free filename found for %s", path)
+		}
 	}
 	defer func() { _ = f.Close() }()
 

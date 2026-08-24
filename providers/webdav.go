@@ -12,20 +12,28 @@ import (
 	"github.com/studio-b12/gowebdav"
 )
 
-func UploadToWebDAV(cfg *config.Config, localPath, remoteFilename string) error {
-	if cfg.WebDAVURL == "" || cfg.WebDAVUsername == "" || cfg.WebDAVPassword == "" {
-		return fmt.Errorf("WebDAV configuration is incomplete")
-	}
-
+func newWebDAVClient(cfg *config.Config) *gowebdav.Client {
 	client := gowebdav.NewClient(cfg.WebDAVURL, cfg.WebDAVUsername, cfg.WebDAVPassword)
 	if cfg.WebDAVInsecure {
-		log.Printf("Warning: InsecureSkipVerify is enabled for WebDAV client. This is not recommended for production environments.")
 		transport := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 
 		client.SetTransport(transport)
 	}
+	return client
+}
+
+func UploadToWebDAV(cfg *config.Config, localPath, remoteFilename string) error {
+	if cfg.WebDAVURL == "" || cfg.WebDAVUsername == "" || cfg.WebDAVPassword == "" {
+		return fmt.Errorf("WebDAV configuration is incomplete")
+	}
+
+	if cfg.WebDAVInsecure {
+		log.Printf("Warning: InsecureSkipVerify is enabled for WebDAV client. This is not recommended for production environments.")
+	}
+
+	client := newWebDAVClient(cfg)
 
 	remotePath := cfg.WebDAVPath
 	if err := client.MkdirAll(remotePath, 0755); err != nil {
@@ -37,13 +45,30 @@ func UploadToWebDAV(cfg *config.Config, localPath, remoteFilename string) error 
 		return fmt.Errorf("failed to read local file: %w", err)
 	}
 
-	fullRemotePath := path.Join(remotePath, remoteFilename)
-	log.Printf("Uploading to WebDAV: %s", cfg.WebDAVURL+fullRemotePath)
+	writeClient := newWebDAVClient(cfg)
+	writeClient.SetHeader("If-None-Match", "*")
 
-	if err := client.Write(fullRemotePath, data, 0644); err != nil {
+	for attempt := 0; attempt < MaxNameAttempts; attempt++ {
+		fullRemotePath := path.Join(remotePath, CandidateName(remoteFilename, attempt))
+
+		if _, err := client.Stat(fullRemotePath); err == nil {
+			continue
+		} else if !gowebdav.IsErrNotFound(err) {
+			return fmt.Errorf("failed to stat remote file %s: %w", fullRemotePath, err)
+		}
+
+		log.Printf("Uploading to WebDAV: %s", cfg.WebDAVURL+fullRemotePath)
+
+		err := writeClient.Write(fullRemotePath, data, 0644)
+		if err == nil {
+			log.Printf("Successfully uploaded to WebDAV: %s", fullRemotePath)
+			return nil
+		}
+		if gowebdav.IsErrCode(err, 412) {
+			continue
+		}
 		return fmt.Errorf("failed to upload to WebDAV: %w", err)
 	}
 
-	log.Printf("Successfully uploaded to WebDAV: %s", fullRemotePath)
-	return nil
+	return fmt.Errorf("no free filename found on WebDAV for %s", remoteFilename)
 }
