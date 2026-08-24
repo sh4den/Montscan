@@ -42,6 +42,8 @@ func (a *Agent) ProcessDocument(pdfPath string) bool {
 			log.Printf("Failed to move file locally: %v", err)
 			return false
 		}
+		log.Printf("Document processing completed successfully: %s", newFilename)
+		return true
 	} else {
 		log.Printf("No upload provider configured, skipping upload for: %s", newFilename)
 	}

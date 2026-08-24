@@ -125,7 +125,7 @@ func downloadSMBFile(share *smb2.Share, remotePath, workDir string) (string, err
 	}()
 
 	localPath := filepath.Join(workDir, fmt.Sprintf("%d-%s", time.Now().UnixNano(), filepath.Base(remotePath)))
-	localFile, err := os.Create(localPath)
+	localFile, err := os.OpenFile(localPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		return "", err
 	}
