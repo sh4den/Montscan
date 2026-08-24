@@ -17,16 +17,43 @@ func MoveLocal(cfg *config.Config, localPath, newFilename string) error {
 		destDir = filepath.Dir(localPath)
 	}
 
-	dest := filepath.Join(destDir, newFilename)
-	if err := os.Rename(localPath, dest); err == nil {
-		return nil
+	for attempt := 0; attempt < MaxNameAttempts; attempt++ {
+		dest := filepath.Join(destDir, CandidateName(newFilename, attempt))
+
+		if dest == filepath.Clean(localPath) {
+			return nil
+		}
+
+		placeholder, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+		if err != nil {
+			if os.IsExist(err) {
+				continue
+			}
+			return fmt.Errorf("local move: claim dest: %w", err)
+		}
+
+		if err := os.Rename(localPath, dest); err == nil {
+			_ = placeholder.Close()
+			return nil
+		}
+
+		// Fallback for cross-device moves (different mount points).
+		if err := copyInto(placeholder, localPath); err != nil {
+			_ = placeholder.Close()
+			_ = os.Remove(dest)
+			return err
+		}
+		if err := placeholder.Close(); err != nil {
+			_ = os.Remove(dest)
+			return fmt.Errorf("local move: close dest: %w", err)
+		}
+		return os.Remove(localPath)
 	}
 
-	// Fallback for cross-device moves (different mount points).
-	return copyAndDelete(localPath, dest)
+	return fmt.Errorf("local move: no free filename found for %s in %s", newFilename, destDir)
 }
 
-func copyAndDelete(src, dst string) error {
+func copyInto(out *os.File, src string) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("local move: open source: %w", err)
@@ -38,26 +65,9 @@ func copyAndDelete(src, dst string) error {
 		}
 	}(in)
 
-	out, err := os.Create(dst)
-	if err != nil {
-		return fmt.Errorf("local move: create dest: %w", err)
-	}
-	defer func(out *os.File) {
-		err := out.Close()
-		if err != nil {
-			fmt.Printf("local move: close dest: %v\n", err)
-		}
-	}(out)
-
 	if _, err := io.Copy(out, in); err != nil {
-		_ = os.Remove(dst)
 		return fmt.Errorf("local move: copy: %w", err)
 	}
 
-	if err := out.Close(); err != nil {
-		_ = os.Remove(dst)
-		return fmt.Errorf("local move: close dest: %w", err)
-	}
-
-	return os.Remove(src)
+	return nil
 }

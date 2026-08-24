@@ -64,10 +64,22 @@ func UploadToSamba(cfg *config.Config, localPath, remoteFilename string) error {
 		}
 	}(localFile)
 
-	remotePath := path.Join(cfg.SambaPath, remoteFilename)
-	remoteFile, err := fs.Create(remotePath)
-	if err != nil {
+	var remoteFile *smb2.File
+	var remotePath string
+	for attempt := 0; attempt < MaxNameAttempts; attempt++ {
+		remotePath = path.Join(cfg.SambaPath, CandidateName(remoteFilename, attempt))
+		remoteFile, err = fs.OpenFile(remotePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+		if err == nil {
+			break
+		}
+		if os.IsExist(err) {
+			remoteFile = nil
+			continue
+		}
 		return fmt.Errorf("failed to create remote file: %v", err)
+	}
+	if remoteFile == nil {
+		return fmt.Errorf("no free filename found on SMB share for %s", remoteFilename)
 	}
 
 	defer func(remoteFile *smb2.File) {
