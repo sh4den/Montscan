@@ -3,7 +3,9 @@
 > It achieve **97.5%** success rate on a small test set of 1000 documents.
 
 <div align="center">
-  <img width="256" height="256" alt="image" src="https://github.com/user-attachments/assets/ced68675-3338-4e7e-b9a0-5a9fc887aeac" />
+
+  ![510231426-ced68675-3338-4e7e-b9a0-5a9fc887aeac-2](https://github.com/user-attachments/assets/b82fb45f-f583-440e-a7f0-c6559125afcc)
+  
 </div>
 
 <div align="center">
@@ -215,10 +217,13 @@ export $(grep -v '^#' .env | xargs)
    ```
    Leave `COMPOSE_PROFILES=cpu` (or unset) for CPU-only.
 
-3. **Build and start the container**
+3. **Start the container**
+
+   By default the prebuilt image from GitHub Container Registry (`ghcr.io/sh4den/montscan`) is used:
    ```bash
    docker-compose up -d
    ```
+   To build from source instead, uncomment the `build: .` line in `docker-compose.yml` and run `docker-compose up -d --build`.
 
 4. **View logs**
    ```bash
