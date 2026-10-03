@@ -1,6 +1,9 @@
+mod config;
 mod env;
 
 use tracing_subscriber::EnvFilter;
+
+use config::Config;
 
 #[tokio::main]
 async fn main() {
@@ -11,5 +14,6 @@ async fn main() {
         .with_target(false)
         .init();
 
-    tracing::info!("Montscan starting");
+    let cfg = Config::load();
+    tracing::info!("Ollama: {} ({})", cfg.ollama.host, cfg.ollama.model);
 }
