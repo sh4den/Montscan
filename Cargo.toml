@@ -8,7 +8,10 @@ repository = "https://github.com/SystemVll/Montscan"
 
 [dependencies]
 anyhow = "1"
+base64 = "0.22"
 colored = "3"
+hayro = "0.8"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
