@@ -6,6 +6,13 @@ use tracing_subscriber::EnvFilter;
 
 use config::Config;
 
+pub fn http_client(accept_invalid_certs: bool) -> reqwest::Result<reqwest::Client> {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    reqwest::Client::builder()
+        .tls_danger_accept_invalid_certs(accept_invalid_certs)
+        .build()
+}
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
