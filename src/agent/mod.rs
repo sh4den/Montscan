@@ -1,1 +1,2 @@
+mod ollama;
 mod pdf;

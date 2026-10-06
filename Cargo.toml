@@ -9,9 +9,14 @@ repository = "https://github.com/SystemVll/Montscan"
 [dependencies]
 anyhow = "1"
 base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 colored = "3"
 hayro = "0.8"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls-no-provider", "http2"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
