@@ -8,6 +8,7 @@ repository = "https://github.com/SystemVll/Montscan"
 
 [dependencies]
 anyhow = "1"
+async-trait = "0.1"
 base64 = "0.22"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 colored = "3"
