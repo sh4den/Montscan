@@ -1,9 +1,15 @@
 mod agent;
 mod config;
 mod env;
+mod ingress;
 
+use std::process::ExitCode;
+use std::sync::Arc;
+
+use ingress::Processor;
 use tracing_subscriber::EnvFilter;
 
+use agent::Agent;
 use config::Config;
 
 pub fn http_client(accept_invalid_certs: bool) -> reqwest::Result<reqwest::Client> {
@@ -14,7 +20,7 @@ pub fn http_client(accept_invalid_certs: bool) -> reqwest::Result<reqwest::Clien
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ExitCode {
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
@@ -23,5 +29,14 @@ async fn main() {
         .init();
 
     let cfg = Config::load();
-    tracing::info!("Ollama: {} ({})", cfg.ollama.host, cfg.ollama.model);
+    let http = match http_client(false) {
+        Ok(http) => http,
+        Err(e) => {
+            tracing::error!("Failed to build HTTP client: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let _processor: Processor = Arc::new(Agent::new(http, cfg.ollama));
+
+    ExitCode::SUCCESS
 }
