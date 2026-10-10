@@ -6,6 +6,7 @@ pub struct Config {
     pub ollama: OllamaConfig,
     pub webdav: WebDavConfig,
     pub samba: SambaConfig,
+    pub folder: crate::ingress::folder::Config,
 }
 
 pub struct OllamaConfig {
@@ -62,6 +63,7 @@ impl Config {
                 password: env::string("SAMBA_PASSWORD", ""),
                 path: env::string("SAMBA_PATH", "scans"),
             },
+            folder: crate::ingress::folder::Config::from_env(),
         }
     }
 }
