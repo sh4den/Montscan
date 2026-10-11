@@ -7,15 +7,21 @@ use crate::ingress::{DocumentProcessor, Outcome};
 use async_trait::async_trait;
 
 use crate::config::OllamaConfig;
+use crate::egress::Egress;
 
 pub struct Agent {
     http: reqwest::Client,
     ollama: OllamaConfig,
+    egress: Option<Egress>,
 }
 
 impl Agent {
-    pub fn new(http: reqwest::Client, ollama: OllamaConfig) -> Self {
-        Self { http, ollama }
+    pub fn new(http: reqwest::Client, ollama: OllamaConfig, egress: Option<Egress>) -> Self {
+        Self {
+            http,
+            ollama,
+            egress,
+        }
     }
 }
 
@@ -33,10 +39,23 @@ impl DocumentProcessor for Agent {
         };
         let filename = ollama::generate_filename(&self.http, &self.ollama, &image).await;
 
-        tracing::info!(
-            "Suggested name for {}: {filename} (no upload provider yet)",
-            path.display()
-        );
-        Outcome::Kept
+        let Some(egress) = &self.egress else {
+            tracing::warn!(
+                "No upload provider configured; leaving {} in place (suggested name: {filename})",
+                path.display()
+            );
+            return Outcome::Kept;
+        };
+
+        match egress.deliver(&path, &filename).await {
+            Ok(outcome) => {
+                tracing::info!("Document processing completed successfully: {filename}");
+                outcome
+            }
+            Err(e) => {
+                tracing::error!("Failed to deliver via {}: {e:#}", egress.name());
+                Outcome::Failed
+            }
+        }
     }
 }

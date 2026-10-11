@@ -1,6 +1,7 @@
 mod agent;
 mod banner;
 mod config;
+mod egress;
 mod env;
 mod ingress;
 
@@ -15,6 +16,7 @@ use tracing_subscriber::EnvFilter;
 use agent::Agent;
 use banner::IngressEntry;
 use config::Config;
+use egress::Egress;
 
 pub fn http_client(accept_invalid_certs: bool) -> reqwest::Result<reqwest::Client> {
     let _ = rustls::crypto::ring::default_provider().install_default();
@@ -70,7 +72,14 @@ async fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let processor: Processor = Arc::new(Agent::new(http, cfg.ollama));
+    let egress = match Egress::from_config(&cfg) {
+        Ok(egress) => egress,
+        Err(e) => {
+            tracing::error!("Invalid egress configuration: {e:#}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let processor: Processor = Arc::new(Agent::new(http, cfg.ollama, egress));
 
     let mut running = JoinSet::new();
     for entry in entries.into_iter().filter(|e| e.enabled) {
