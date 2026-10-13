@@ -39,6 +39,12 @@ pub fn print(cfg: &Config, ingresses: &[IngressEntry]) {
         }
     }
 
+    if cfg.webdav.enabled {
+        section("☁️ ", "WebDAV Provider", &[("URL", cfg.webdav.url.clone())]);
+    } else {
+        disabled("WebDAV Provider", "Not configured (WEBDAV_ENABLED=false)");
+    }
+
     section(
         "🤖",
         "AI Processing (Ollama)",
