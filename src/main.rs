@@ -72,7 +72,7 @@ async fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let egress = match Egress::from_config(&cfg) {
+    let egress = match Egress::from_config(&cfg, &http) {
         Ok(egress) => egress,
         Err(e) => {
             tracing::error!("Invalid egress configuration: {e:#}");
