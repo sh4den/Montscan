@@ -130,3 +130,65 @@ impl WebDav {
         Ok(response)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn webdav(url: &str, path: &str) -> WebDav {
+        WebDav::new(
+            &WebDavConfig {
+                enabled: true,
+                url: url.into(),
+                username: "u".into(),
+                password: "p".into(),
+                path: path.into(),
+                insecure: false,
+            },
+            crate::http_client(false).unwrap(),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn builds_encoded_urls() {
+        let dav = webdav(
+            "https://cloud.example.com/remote.php/webdav/",
+            "/Documents/My Scans",
+        );
+        let mut segments = dav.path.clone();
+        segments.push("INVOICE #1.pdf".into());
+        assert_eq!(
+            dav.url(&segments, false).unwrap().as_str(),
+            "https://cloud.example.com/remote.php/webdav/Documents/My%20Scans/INVOICE%20%231.pdf"
+        );
+        assert_eq!(
+            dav.url(&dav.path[..1], true).unwrap().as_str(),
+            "https://cloud.example.com/remote.php/webdav/Documents/"
+        );
+    }
+
+    #[test]
+    fn handles_base_without_trailing_slash() {
+        let dav = webdav("https://dav.example.com/dav", "Scans");
+        assert_eq!(
+            dav.url(&["Scans".into(), "a.pdf".into()], false)
+                .unwrap()
+                .as_str(),
+            "https://dav.example.com/dav/Scans/a.pdf"
+        );
+    }
+
+    #[test]
+    fn rejects_incomplete_config() {
+        let cfg = WebDavConfig {
+            enabled: true,
+            url: String::new(),
+            username: "u".into(),
+            password: "p".into(),
+            path: "/".into(),
+            insecure: false,
+        };
+        assert!(WebDav::new(&cfg, crate::http_client(false).unwrap()).is_err());
+    }
+}
