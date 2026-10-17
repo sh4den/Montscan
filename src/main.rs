@@ -26,12 +26,20 @@ pub fn http_client(accept_invalid_certs: bool) -> reqwest::Result<reqwest::Clien
 }
 
 fn ingresses(cfg: &Config) -> Vec<IngressEntry> {
-    vec![IngressEntry {
-        icon: "📂",
-        enabled: cfg.folder.enabled,
-        flag: "FOLDER_ENABLED",
-        ingress: Box::new(ingress::folder::FolderIngress::new(cfg.folder.clone())),
-    }]
+    vec![
+        IngressEntry {
+            icon: "📡",
+            enabled: cfg.ftp.enabled,
+            flag: "FTP_ENABLED",
+            ingress: Box::new(ingress::ftp::FtpIngress::new(cfg.ftp.clone())),
+        },
+        IngressEntry {
+            icon: "📂",
+            enabled: cfg.folder.enabled,
+            flag: "FOLDER_ENABLED",
+            ingress: Box::new(ingress::folder::FolderIngress::new(cfg.folder.clone())),
+        },
+    ]
 }
 
 async fn shutdown_signal() {
@@ -52,7 +60,8 @@ async fn shutdown_signal() {
 async fn main() -> ExitCode {
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| EnvFilter::new("info,libunftp=warn")),
         )
         .with_target(false)
         .init();
@@ -62,7 +71,7 @@ async fn main() -> ExitCode {
     banner::print(&cfg, &entries);
 
     if !entries.iter().any(|e| e.enabled) {
-        tracing::error!("No ingress enabled. Set FOLDER_ENABLED=true.");
+        tracing::error!("No ingress enabled. Enable FTP_ENABLED or FOLDER_ENABLED.");
         return ExitCode::FAILURE;
     }
     let http = match http_client(false) {
