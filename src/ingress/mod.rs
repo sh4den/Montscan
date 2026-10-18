@@ -1,5 +1,6 @@
 pub mod folder;
 pub mod ftp;
+mod ssh;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
