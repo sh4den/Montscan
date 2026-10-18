@@ -2,3 +2,4 @@
 scans/
 .env
 target/
+data/
