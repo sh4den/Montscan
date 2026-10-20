@@ -34,6 +34,12 @@ fn ingresses(cfg: &Config) -> Vec<IngressEntry> {
             ingress: Box::new(ingress::ftp::FtpIngress::new(cfg.ftp.clone())),
         },
         IngressEntry {
+            icon: "🔐",
+            enabled: cfg.sftp.enabled,
+            flag: "SFTP_ENABLED",
+            ingress: Box::new(ingress::sftp::SftpIngress::new(cfg.sftp.clone())),
+        },
+        IngressEntry {
             icon: "📂",
             enabled: cfg.folder.enabled,
             flag: "FOLDER_ENABLED",
@@ -61,7 +67,7 @@ async fn main() -> ExitCode {
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info,libunftp=warn")),
+                .unwrap_or_else(|_| EnvFilter::new("info,libunftp=warn,russh=warn")),
         )
         .with_target(false)
         .init();
@@ -71,7 +77,7 @@ async fn main() -> ExitCode {
     banner::print(&cfg, &entries);
 
     if !entries.iter().any(|e| e.enabled) {
-        tracing::error!("No ingress enabled. Enable FTP_ENABLED or FOLDER_ENABLED.");
+        tracing::error!("No ingress enabled. Enable FTP_ENABLED, SFTP_ENABLED, or FOLDER_ENABLED.");
         return ExitCode::FAILURE;
     }
     let http = match http_client(false) {
