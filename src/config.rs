@@ -7,6 +7,7 @@ pub struct Config {
     pub webdav: WebDavConfig,
     pub samba: SambaConfig,
     pub ftp: crate::ingress::ftp::Config,
+    pub sftp: crate::ingress::sftp::Config,
     pub folder: crate::ingress::folder::Config,
 }
 
@@ -65,6 +66,7 @@ impl Config {
                 path: env::string("SAMBA_PATH", "scans"),
             },
             ftp: crate::ingress::ftp::Config::from_env(),
+            sftp: crate::ingress::sftp::Config::from_env(),
             folder: crate::ingress::folder::Config::from_env(),
         }
     }

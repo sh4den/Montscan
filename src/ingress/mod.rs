@@ -1,5 +1,6 @@
 pub mod folder;
 pub mod ftp;
+pub mod sftp;
 mod ssh;
 
 use std::path::{Path, PathBuf};
