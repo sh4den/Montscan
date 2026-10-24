@@ -40,6 +40,12 @@ fn ingresses(cfg: &Config) -> Vec<IngressEntry> {
             ingress: Box::new(ingress::sftp::SftpIngress::new(cfg.sftp.clone())),
         },
         IngressEntry {
+            icon: "📤",
+            enabled: cfg.scp.enabled,
+            flag: "SCP_ENABLED",
+            ingress: Box::new(ingress::scp::ScpIngress::new(cfg.scp.clone())),
+        },
+        IngressEntry {
             icon: "📂",
             enabled: cfg.folder.enabled,
             flag: "FOLDER_ENABLED",
@@ -77,7 +83,9 @@ async fn main() -> ExitCode {
     banner::print(&cfg, &entries);
 
     if !entries.iter().any(|e| e.enabled) {
-        tracing::error!("No ingress enabled. Enable FTP_ENABLED, SFTP_ENABLED, or FOLDER_ENABLED.");
+        tracing::error!(
+            "No ingress enabled. Enable FTP_ENABLED, SFTP_ENABLED, SCP_ENABLED, or FOLDER_ENABLED."
+        );
         return ExitCode::FAILURE;
     }
     let http = match http_client(false) {
