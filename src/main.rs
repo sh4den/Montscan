@@ -46,6 +46,12 @@ fn ingresses(cfg: &Config) -> Vec<IngressEntry> {
             ingress: Box::new(ingress::scp::ScpIngress::new(cfg.scp.clone())),
         },
         IngressEntry {
+            icon: "📥",
+            enabled: cfg.smb.enabled,
+            flag: "SAMBA_SERVER_ENABLED",
+            ingress: Box::new(ingress::smb::SmbIngress::new(cfg.smb.clone())),
+        },
+        IngressEntry {
             icon: "📂",
             enabled: cfg.folder.enabled,
             flag: "FOLDER_ENABLED",
@@ -72,8 +78,9 @@ async fn shutdown_signal() {
 async fn main() -> ExitCode {
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info,libunftp=warn,russh=warn")),
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                EnvFilter::new("info,libunftp=warn,russh=warn,smb=warn,sspi=warn")
+            }),
         )
         .with_target(false)
         .init();
@@ -84,7 +91,7 @@ async fn main() -> ExitCode {
 
     if !entries.iter().any(|e| e.enabled) {
         tracing::error!(
-            "No ingress enabled. Enable FTP_ENABLED, SFTP_ENABLED, SCP_ENABLED, or FOLDER_ENABLED."
+            "No ingress enabled. Enable FTP_ENABLED, SFTP_ENABLED, SCP_ENABLED, SAMBA_SERVER_ENABLED, or FOLDER_ENABLED."
         );
         return ExitCode::FAILURE;
     }
