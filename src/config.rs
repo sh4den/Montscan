@@ -9,6 +9,7 @@ pub struct Config {
     pub ftp: crate::ingress::ftp::Config,
     pub sftp: crate::ingress::sftp::Config,
     pub scp: crate::ingress::scp::Config,
+    pub smb: crate::ingress::smb::Config,
     pub folder: crate::ingress::folder::Config,
 }
 
@@ -69,6 +70,7 @@ impl Config {
             ftp: crate::ingress::ftp::Config::from_env(),
             sftp: crate::ingress::sftp::Config::from_env(),
             scp: crate::ingress::scp::Config::from_env(),
+            smb: crate::ingress::smb::Config::from_env(),
             folder: crate::ingress::folder::Config::from_env(),
         }
     }

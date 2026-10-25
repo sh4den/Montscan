@@ -2,6 +2,7 @@ pub mod folder;
 pub mod ftp;
 pub mod scp;
 pub mod sftp;
+pub mod smb;
 mod ssh;
 
 use std::path::{Path, PathBuf};

@@ -12,9 +12,11 @@ async-trait = "0.1"
 base64 = "0.22"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 colored = "3"
+futures-util = "0.3"
 hayro = "0.8"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 libunftp = { version = "0.24", default-features = false, features = ["ring"] }
+picky = { version = "=7.0.0-rc.17", default-features = false }
 rand = "0.10"
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls-no-provider", "http2"] }
 russh = { version = "0.65", default-features = false, features = ["ring", "flate2", "rsa"] }
@@ -22,6 +24,12 @@ russh-sftp = "3.0"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+smb = "=0.10.2"
+smb-dtyp = "=0.10.2"
+smb-fscc = "=0.10.2"
+smb-msg = "=0.10.2"
+smb-rpc = "=0.10.2"
+smb-transport = "=0.10.2"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
