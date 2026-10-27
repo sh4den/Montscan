@@ -310,3 +310,16 @@ async fn download(
     let _ = file.close().await;
     result
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn converts_share_paths() {
+        assert_eq!(share_path("/scans"), "scans");
+        assert_eq!(share_path("/a/b/"), "a\\b");
+        assert_eq!(share_path("a\\b"), "a\\b");
+        assert_eq!(share_path("/"), "");
+    }
+}
