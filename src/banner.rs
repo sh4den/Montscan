@@ -45,6 +45,23 @@ pub fn print(cfg: &Config, ingresses: &[IngressEntry]) {
         disabled("WebDAV Provider", "Not configured (WEBDAV_ENABLED=false)");
     }
 
+    if cfg.samba.enabled {
+        let s = &cfg.samba;
+        section(
+            "🗂️ ",
+            "Samba Provider",
+            &[
+                ("Host", s.host.clone()),
+                ("Port", s.port.to_string()),
+                ("Share", s.share.clone()),
+                ("Username", s.username.clone()),
+                ("Path", s.path.clone()),
+            ],
+        );
+    } else {
+        disabled("Samba Provider", "Not configured (SAMBA_ENABLED=false)");
+    }
+
     section(
         "🤖",
         "AI Processing (Ollama)",
