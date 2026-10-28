@@ -1,4 +1,5 @@
 mod local;
+mod smb;
 mod webdav;
 
 use std::path::{Path, PathBuf};
@@ -9,6 +10,7 @@ use crate::config::Config;
 
 pub enum Egress {
     WebDav(webdav::WebDav),
+    Samba(smb::Samba),
     Local { output_dir: Option<PathBuf> },
 }
 
@@ -19,6 +21,8 @@ impl Egress {
                 &cfg.webdav,
                 http.clone(),
             )?))
+        } else if cfg.samba.enabled {
+            Some(Self::Samba(smb::Samba::new(&cfg.samba)?))
         } else if cfg.folder.enabled {
             Some(Self::Local {
                 output_dir: cfg.folder.output_dir.clone(),
@@ -31,6 +35,7 @@ impl Egress {
     pub fn name(&self) -> &'static str {
         match self {
             Self::WebDav(_) => "WebDAV",
+            Self::Samba(_) => "Samba",
             Self::Local { .. } => "local move",
         }
     }
@@ -38,6 +43,7 @@ impl Egress {
     pub async fn deliver(&self, path: &Path, filename: &str) -> anyhow::Result<Outcome> {
         match self {
             Self::WebDav(webdav) => webdav.upload(path, filename).await?,
+            Self::Samba(samba) => samba.upload(path, filename).await?,
             Self::Local { output_dir } => {
                 let dest = local::move_file(path, output_dir.as_deref(), filename).await?;
                 return Ok(Outcome::MovedTo(dest));
