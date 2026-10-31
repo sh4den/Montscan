@@ -35,6 +35,8 @@ services:
     ports:
       - "21:21"
       - "21000-21010:21000-21010"
+      - "2222:2222"
+      - "2223:2223"
     environment:
       # FTP server settings
       - FTP_ENABLED=${FTP_ENABLED:-true}
@@ -43,6 +45,27 @@ services:
       - FTP_USERNAME=scanner
       - FTP_PASSWORD=${FTP_PASSWORD:-scanner123}
       - FTP_UPLOAD_DIR=/app/scans
+      - FTP_PASSIVE_PORTS=21000-21010
+      # IP the scanner should use for passive data connections (the Docker host's LAN IP)
+      - FTP_PASSIVE_HOST=${FTP_PASSIVE_HOST:-}
+
+      # SFTP server settings
+      - SFTP_ENABLED=${SFTP_ENABLED:-false}
+      - SFTP_HOST=0.0.0.0
+      - SFTP_PORT=2222
+      - SFTP_USERNAME=${SFTP_USERNAME:-scanner}
+      - SFTP_PASSWORD=${SFTP_PASSWORD:-scanner123}
+      - SFTP_UPLOAD_DIR=/app/scans
+      - SFTP_HOST_KEY=/app/data/ssh_host_ed25519_key
+
+      # SCP server settings
+      - SCP_ENABLED=${SCP_ENABLED:-false}
+      - SCP_HOST=0.0.0.0
+      - SCP_PORT=2223
+      - SCP_USERNAME=${SCP_USERNAME:-scanner}
+      - SCP_PASSWORD=${SCP_PASSWORD:-scanner123}
+      - SCP_UPLOAD_DIR=/app/scans
+      - SCP_HOST_KEY=/app/data/ssh_host_ed25519_key
 
       # SMB/CIFS (Samba) settings
       - SAMBA_SERVER_ENABLED=${SAMBA_SERVER_ENABLED:-false}
@@ -68,11 +91,14 @@ services:
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-llava}
       - OLLAMA_NUM_CTX=${OLLAMA_NUM_CTX:-8192}
+      - OLLAMA_TIMEOUT=${OLLAMA_TIMEOUT:-120}
 
       # Prompt settings
       - LANGUAGE=${LANGUAGE:-English}
     volumes:
       - ./scans:/app/scans
+      # Persists the SSH host key so SFTP/SCP clients keep a stable fingerprint
+      - ./data:/app/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
