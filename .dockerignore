@@ -1,0 +1,5 @@
+target/
+scans/
+.env
+.git/
+.idea/
