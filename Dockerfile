@@ -1,16 +1,15 @@
 # BUILD
-FROM golang:1.25.5-alpine3.23 AS builder
+FROM rust:1.99-alpine3.23 AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache git
+# ring (TLS/SSH crypto) compiles C code and links against musl.
+RUN apk add --no-cache musl-dev
 
-COPY go.mod go.sum ./
-RUN go mod download
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
 
-COPY . .
-
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o montscan .
+RUN cargo build --release --locked
 
 # RUNTIME
 FROM alpine:3.23
@@ -18,14 +17,14 @@ FROM alpine:3.23
 WORKDIR /app
 
 RUN apk add --no-cache \
-    poppler-utils \
     ca-certificates \
     tzdata
 
-COPY --from=builder /app/montscan .
+COPY --from=builder /app/target/release/montscan .
 
-RUN mkdir -p /app/scans
+RUN mkdir -p /app/scans /app/data
 
-EXPOSE 21 21000-21010
+# FTP control + passive range, SFTP, SCP
+EXPOSE 21 21000-21010 2222 2223
 
 CMD ["./montscan"]
