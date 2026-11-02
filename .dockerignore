@@ -1,0 +1,5 @@
+target/
+storage/
+.env
+.git/
+.idea/

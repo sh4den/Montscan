@@ -21,6 +21,8 @@
 ## ✨ Features
 
 - 📡 **FTP Server** - Receives documents from network scanners via FTP
+- 🔐 **SFTP Server** - Receives documents over SSH file transfer
+- 📤 **SCP Server** - Receives documents via the legacy SCP protocol
 - 📥 **Samba Server** - Polls a remote SMB share for incoming PDFs
 - 📂 **Folder Watcher** - Monitors a local directory; renames in place or moves to an output folder
 - 👁️ **Vision AI Processing** - Analyzes scanned documents using Ollama vision models
@@ -31,8 +33,42 @@
 
 ---
 
+## 🦀 Rust Rewrite
+
+Montscan was originally written in Go. Starting with **v2.0.0** it has been rewritten from the ground up in Rust. The goal was a single self-contained binary, cleaner boundaries between components, and room to add new ways for scanners to send documents.
+
+### What changed
+
+- **No more external PDF tools** - The Go version shelled out to Poppler (`pdftoppm`) or ImageMagick to turn PDFs into images. Pages are now rendered in-process with [`hayro`](https://crates.io/crates/hayro), so nothing beyond the `montscan` binary is needed at runtime.
+- **New ingresses** - Montscan can now receive documents over **SFTP** and the legacy **SCP** protocol, alongside FTP, Samba polling and the folder watcher.
+- **Pluggable architecture** - Every ingress implements a common `Ingress` trait and only hands finished PDFs to the document processor. Delivery (WebDAV, Samba, local move) lives in a separate `egress` module. Adding a new protocol no longer touches the AI or upload code. See [Architecture](#️-architecture).
+- **Better FTP behind NAT/Docker** - The passive port range and advertised address can now be configured (`FTP_PASSIVE_PORTS`, `FTP_PASSIVE_HOST`).
+- **Ollama timeout** - `OLLAMA_TIMEOUT` sets how long Montscan waits for a filename before falling back to `scan_<timestamp>.pdf`. This is useful for slower "thinking" vision models.
+- **Smaller Docker image** - The runtime image no longer installs `poppler-utils`.
+
+### Upgrading from 1.x
+
+> [!WARNING]
+> **v2.0.0 is a breaking release and is not backward compatible with 1.x.** Read the notes below before upgrading.
+> The Go implementation (1.x) is kept on the [`legacy-v1.0.0`](https://github.com/sh4den/Montscan/tree/legacy-v1.0.0) branch and no longer receives updates.
+
+- **Environment variables** keep their names. The legacy `SAMBA_INGRESS_*` names are still accepted as fallbacks for `SAMBA_SERVER_*`.
+- **Name collisions** - Uploads to WebDAV and Samba, and files received over FTP, replace an existing file with the same name. 1.x appended `_1`, `_2`, … instead. Local moves by the folder watcher still never overwrite.
+- **Runtime files moved to `storage/`** - Received scans now default to `./storage/inbox` (previously `./scans`), and SSH host keys live in `./storage/ssh`. If you relied on the old default, set `FTP_UPLOAD_DIR=./scans` or move the folder.
+- **Building from source** now requires Rust 1.92+ instead of Go (`cargo build --release`).
+- **Docker** - Pull the new image (`docker-compose pull`), or rebuild it if you build from source. If you enable SFTP or SCP, publish ports `2222`/`2223` and mount `./storage:/app/storage` so received scans and the generated SSH host key survive container recreation. The provided `docker-compose.yml` already does both.
+- **Logging** now uses `RUST_LOG` (default `info`).
+
+### A note on AI assistance
+
+AI tools helped during the rewrite, mainly to organize the work into commits and to audit the code for bugs and edge cases. Every change was reviewed before it was merged.
+
+---
+
 ## 📋 Table of Contents
 
+- [Rust Rewrite](#-rust-rewrite)
+- [Architecture](#️-architecture)
 - [Prerequisites](#-prerequisites)
 - [Installation](#-installation)
 - [Configuration](#️-configuration-options)
@@ -43,10 +79,28 @@
 
 ---
 
+## 🏗️ Architecture
+
+Montscan is written entirely in Rust, with no external programs or C libraries required at runtime (PDF pages are rendered in-process). It is a single crate; all code lives in `src/`. Each ingress is a module under `src/ingress/`, built on an existing protocol library, and implements the `Ingress` trait. Ingresses only hand finished PDFs to a `DocumentProcessor`; they know nothing about AI naming or delivery.
+
+| Module | Role | Built on |
+|---|---|---|
+| `ingress` | `Ingress` / `DocumentProcessor` traits | — |
+| `ingress::ftp` | FTP ingress | [`libunftp`](https://crates.io/crates/libunftp) + [`unftp-sbe-fs`](https://crates.io/crates/unftp-sbe-fs) |
+| `ingress::sftp` | SFTP ingress | [`russh`](https://crates.io/crates/russh) + [`russh-sftp`](https://crates.io/crates/russh-sftp) |
+| `ingress::scp` | SCP ingress | [`russh`](https://crates.io/crates/russh) (no SCP server crate exists; the small SCP sink protocol is implemented in the module) |
+| `ingress::smb` | SMB share poller | [`smb`](https://crates.io/crates/smb) (pure Rust SMB2/3 client) |
+| `ingress::folder` | Local folder watcher | `tokio` |
+| `ingress::ssh` | Host key, auth and path jailing shared by SFTP and SCP | `russh` |
+| `agent` | PDF rendering and Ollama filename generation | [`hayro`](https://crates.io/crates/hayro) (pure Rust PDF renderer), `reqwest`, `image` |
+| `egress` | WebDAV / Samba / local delivery | `reqwest`, `smb` |
+| `config`, `env`, `banner` | Settings and startup banner | — |
+
+---
+
 ## 🔧 Prerequisites
 
-- **Go 1.24+**
-- **Poppler** (pdftoppm) or **ImageMagick** - For PDF to image conversion
+- **Rust 1.92+** (to build from source)
 - **Ollama** - [Installation guide](https://ollama.ai/) with a vision model (e.g., `llava`, `llama3.2-vision`)
 - **WebDAV server** or **SMB share** (optional) - For processed file delivery
 
@@ -64,15 +118,11 @@
 
 2. **Build the application**
    ```bash
-   go build -o montscan .
+   cargo build --release
+   # binary: target/release/montscan
    ```
 
-3. **Install Poppler or ImageMagick**
-    - **Windows**: Download from [GitHub Releases](https://github.com/oschwartz10612/poppler-windows/releases)
-    - **Linux**: `sudo apt-get install poppler-utils`
-    - **macOS**: `brew install poppler`
-
-4. **Set up Ollama with a vision model**
+3. **Set up Ollama with a vision model**
    ```bash
    # Install Ollama from https://ollama.ai/
    ollama pull llava
@@ -83,7 +133,7 @@
 
 ## ⚙️ Configuration Options
 
-At least one **ingress** must be enabled. At least one **egress provider** should be configured, or the folder watcher can act as both (rename/move in place).
+At least one **ingress** must be enabled. At least one **egress provider** should be configured, or the folder watcher can act as both (rename/move in place). Egress is chosen in priority order: WebDAV, then Samba, then a local move when the folder watcher is enabled. With no egress at all, received files are left where they landed.
 
 ### Ingress — FTP Server
 
@@ -94,7 +144,39 @@ At least one **ingress** must be enabled. At least one **egress provider** shoul
 | `FTP_PORT` | FTP server port | `21` |
 | `FTP_USERNAME` | FTP authentication username | `scanner` |
 | `FTP_PASSWORD` | FTP authentication password | `scanner123` |
-| `FTP_UPLOAD_DIR` | Local directory for received files | `./scans` |
+| `FTP_UPLOAD_DIR` | Local directory for received files | `./storage/inbox` |
+| `FTP_PASSIVE_PORTS` | Passive data port range | `21000-21010` |
+| `FTP_PASSIVE_HOST` | Address advertised for passive connections (set to the host's LAN IP behind Docker/NAT) | *(control connection address)* |
+
+Files are processed once a `STOR` completes, or when an upload is renamed to `*.pdf`.
+
+### Ingress — SFTP Server
+
+| Variable | Description | Default |
+|---|---|---|
+| `SFTP_ENABLED` | Enable the SFTP ingress server | `false` |
+| `SFTP_HOST` | Bind address | `0.0.0.0` |
+| `SFTP_PORT` | Port | `2222` |
+| `SFTP_USERNAME` | Username (password auth only; no shell access) | `scanner` |
+| `SFTP_PASSWORD` | Password | `scanner123` |
+| `SFTP_UPLOAD_DIR` | Directory clients see as `/` | `./storage/inbox` |
+| `SFTP_HOST_KEY` | Ed25519 host key, generated on first start | `./storage/ssh/ssh_host_ed25519_key` |
+
+Files are processed when the client closes the file, or when an upload is renamed to `*.pdf`. Modern `scp` (OpenSSH 9+) uses the SFTP protocol and works against this port.
+
+### Ingress — SCP Server
+
+| Variable | Description | Default |
+|---|---|---|
+| `SCP_ENABLED` | Enable the SCP ingress server | `false` |
+| `SCP_HOST` | Bind address | `0.0.0.0` |
+| `SCP_PORT` | Port | `2223` |
+| `SCP_USERNAME` | Username (password auth only; no shell access) | `scanner` |
+| `SCP_PASSWORD` | Password | `scanner123` |
+| `SCP_UPLOAD_DIR` | Directory clients see as `/` | `./storage/inbox` |
+| `SCP_HOST_KEY` | Ed25519 host key, generated on first start (may be shared with SFTP) | `./storage/ssh/ssh_host_ed25519_key` |
+
+This speaks the legacy SCP protocol (`scp -t`), as used by scanners and `scp -O`. Uploads only; recursive (`-r`) uploads are supported.
 
 ### Ingress — Samba Server (polls a remote SMB share)
 
@@ -148,7 +230,9 @@ At least one **ingress** must be enabled. At least one **egress provider** shoul
 | Variable | Description | Default |
 |---|---|---|
 | `OLLAMA_HOST` | Ollama service URL | `http://localhost:11434` |
-| `OLLAMA_MODEL` | Vision model to use | `llava` |
+| `OLLAMA_MODEL` | Vision model to use | `qwen3-vl:8b` |
+| `OLLAMA_NUM_CTX` | Context window (tokens) requested per call | `8192` |
+| `OLLAMA_TIMEOUT` | Seconds to wait for Ollama before falling back to a timestamped name | `120` |
 | `LANGUAGE` | Language for AI-generated filenames | `english` |
 
 ---
@@ -197,8 +281,10 @@ FTP_ENABLED=false
 cp .env.example .env
 # edit .env with your values
 export $(grep -v '^#' .env | xargs)
-./montscan
+./target/release/montscan
 ```
+
+Logging defaults to `info`; override with `RUST_LOG` (e.g. `RUST_LOG=debug`).
 
 ---
 
@@ -262,6 +348,15 @@ docker run -d \
 - Check that port 21 is not blocked by a firewall
 - On Windows, allow the application through Windows Defender Firewall
 
+### FTP Uploads Hang After Login (Docker)
+- Passive data connections must reach the container: publish `FTP_PASSIVE_PORTS` and set `FTP_PASSIVE_HOST` to the Docker host's LAN IP
+
+### SCP Fails with "subsystem request failed"
+- OpenSSH 9+ `scp` uses the SFTP protocol by default. Use `scp -O` against the SCP port, or point the client at the SFTP port instead
+
+### SSH Host Key Changed Warning
+- The host key is generated on first start at `SFTP_HOST_KEY` / `SCP_HOST_KEY`. In Docker, keep it on the `./storage` volume so it survives container recreation
+
 ### Folder Watcher Not Picking Up Files
 - Verify `FOLDER_INPUT_DIR` points to the correct path inside the container (use volume mounts)
 - Check that the directory is readable by the process running Montscan
@@ -278,9 +373,8 @@ docker run -d \
 - For Nextcloud: verify WebDAV is enabled and the URL ends with `/remote.php/webdav`
 - Try `WEBDAV_INSECURE=true` if you use a self-signed certificate
 
-### Poppler/ImageMagick Not Found
-- Install Poppler (`pdftoppm`) or ImageMagick and ensure the binary is in `PATH`
-- Windows: add Poppler's `bin` folder to the `PATH` environment variable
+### Scan Fails with "failed to parse PDF"
+- Password-protected (encrypted) PDFs are not supported; disable PDF encryption on the scanner
 
 ---
 
@@ -292,11 +386,11 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🙏 Acknowledgments
 
-- [goftp/server](https://github.com/goftp/server) - Go FTP server library
-- [go-smb2](https://github.com/hirochachacha/go-smb2) - SMB2 protocol client for Go
+- [libunftp](https://github.com/bolcom/libunftp) - Async FTP server library for Rust
+- [russh](https://github.com/Eugeny/russh) and [russh-sftp](https://github.com/AspectUnk/russh-sftp) - SSH and SFTP server libraries for Rust
+- [smb-rs](https://github.com/afiffon/smb-rs) - Pure Rust SMB2/3 client
 - [Ollama](https://ollama.ai/) - Local AI vision model runner
-- [gowebdav](https://github.com/studio-b12/gowebdav) - WebDAV client for Go
-- [fatih/color](https://github.com/fatih/color) - Colorful terminal output
+- [reqwest](https://github.com/seanmonstar/reqwest) - HTTP client used for Ollama and WebDAV
 
 ---
 
