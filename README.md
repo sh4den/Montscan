@@ -35,7 +35,7 @@
 
 ## 🦀 Rust Rewrite
 
-Montscan was originally written in Go. Starting with **v0.2.0** it has been rewritten from the ground up in Rust. The goal was a single self-contained binary, cleaner boundaries between components, and room to add new ways for scanners to send documents.
+Montscan was originally written in Go. Starting with **v2.0.0** it has been rewritten from the ground up in Rust. The goal was a single self-contained binary, cleaner boundaries between components, and room to add new ways for scanners to send documents.
 
 ### What changed
 
@@ -46,12 +46,17 @@ Montscan was originally written in Go. Starting with **v0.2.0** it has been rewr
 - **Ollama timeout** - `OLLAMA_TIMEOUT` sets how long Montscan waits for a filename before falling back to `scan_<timestamp>.pdf`. This is useful for slower "thinking" vision models.
 - **Smaller Docker image** - The runtime image no longer installs `poppler-utils`.
 
-### Upgrading from the Go version
+### Upgrading from 1.x
 
-- **Configuration is compatible** - All existing environment variables keep their names. The legacy `SAMBA_INGRESS_*` names are still accepted as fallbacks for `SAMBA_SERVER_*`.
+> [!WARNING]
+> **v2.0.0 is a breaking release and is not backward compatible with 1.x.** Read the notes below before upgrading.
+> The Go implementation (1.x) is kept on the [`legacy-v1.0.0`](https://github.com/sh4den/Montscan/tree/legacy-v1.0.0) branch and no longer receives updates.
+
+- **Environment variables** keep their names. The legacy `SAMBA_INGRESS_*` names are still accepted as fallbacks for `SAMBA_SERVER_*`.
+- **Name collisions** - Uploads to WebDAV and Samba, and files received over FTP, replace an existing file with the same name. 1.x appended `_1`, `_2`, … instead. Local moves by the folder watcher still never overwrite.
 - **Runtime files moved to `storage/`** - Received scans now default to `./storage/inbox` (previously `./scans`), and SSH host keys live in `./storage/ssh`. If you relied on the old default, set `FTP_UPLOAD_DIR=./scans` or move the folder.
 - **Building from source** now requires Rust 1.92+ instead of Go (`cargo build --release`).
-- **Docker** - Rebuild the image. If you enable SFTP or SCP, publish ports `2222`/`2223` and mount `./storage:/app/storage` so received scans and the generated SSH host key survive container recreation. The provided `docker-compose.yml` already does both.
+- **Docker** - Pull the new image (`docker-compose pull`), or rebuild it if you build from source. If you enable SFTP or SCP, publish ports `2222`/`2223` and mount `./storage:/app/storage` so received scans and the generated SSH host key survive container recreation. The provided `docker-compose.yml` already does both.
 - **Logging** now uses `RUST_LOG` (default `info`).
 
 ### A note on AI assistance
