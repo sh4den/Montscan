@@ -32,8 +32,8 @@ impl Config {
             port: env::parse("SCP_PORT", 2223),
             username: env::string("SCP_USERNAME", "scanner"),
             password: env::string("SCP_PASSWORD", "scanner123"),
-            upload_dir: env::string("SCP_UPLOAD_DIR", "./scans").into(),
-            host_key: env::string("SCP_HOST_KEY", "./ssh_host_ed25519_key").into(),
+            upload_dir: env::string("SCP_UPLOAD_DIR", "./storage/inbox").into(),
+            host_key: env::string("SCP_HOST_KEY", "./storage/ssh/ssh_host_ed25519_key").into(),
         }
     }
 }

@@ -48,9 +48,10 @@ Montscan was originally written in Go. Starting with **v0.2.0** it has been rewr
 
 ### Upgrading from the Go version
 
-- **Configuration is compatible** - All existing environment variables keep their names and defaults. The legacy `SAMBA_INGRESS_*` names are still accepted as fallbacks for `SAMBA_SERVER_*`.
+- **Configuration is compatible** - All existing environment variables keep their names. The legacy `SAMBA_INGRESS_*` names are still accepted as fallbacks for `SAMBA_SERVER_*`.
+- **Runtime files moved to `storage/`** - Received scans now default to `./storage/inbox` (previously `./scans`), and SSH host keys live in `./storage/ssh`. If you relied on the old default, set `FTP_UPLOAD_DIR=./scans` or move the folder.
 - **Building from source** now requires Rust 1.92+ instead of Go (`cargo build --release`).
-- **Docker** - Rebuild the image. If you enable SFTP or SCP, publish ports `2222`/`2223` and mount `./data:/app/data` so the generated SSH host key survives container recreation. The provided `docker-compose.yml` already does both.
+- **Docker** - Rebuild the image. If you enable SFTP or SCP, publish ports `2222`/`2223` and mount `./storage:/app/storage` so received scans and the generated SSH host key survive container recreation. The provided `docker-compose.yml` already does both.
 - **Logging** now uses `RUST_LOG` (default `info`).
 
 ### A note on AI assistance
@@ -138,7 +139,7 @@ At least one **ingress** must be enabled. At least one **egress provider** shoul
 | `FTP_PORT` | FTP server port | `21` |
 | `FTP_USERNAME` | FTP authentication username | `scanner` |
 | `FTP_PASSWORD` | FTP authentication password | `scanner123` |
-| `FTP_UPLOAD_DIR` | Local directory for received files | `./scans` |
+| `FTP_UPLOAD_DIR` | Local directory for received files | `./storage/inbox` |
 | `FTP_PASSIVE_PORTS` | Passive data port range | `21000-21010` |
 | `FTP_PASSIVE_HOST` | Address advertised for passive connections (set to the host's LAN IP behind Docker/NAT) | *(control connection address)* |
 
@@ -153,8 +154,8 @@ Files are processed once a `STOR` completes, or when an upload is renamed to `*.
 | `SFTP_PORT` | Port | `2222` |
 | `SFTP_USERNAME` | Username (password auth only; no shell access) | `scanner` |
 | `SFTP_PASSWORD` | Password | `scanner123` |
-| `SFTP_UPLOAD_DIR` | Directory clients see as `/` | `./scans` |
-| `SFTP_HOST_KEY` | Ed25519 host key, generated on first start | `./ssh_host_ed25519_key` |
+| `SFTP_UPLOAD_DIR` | Directory clients see as `/` | `./storage/inbox` |
+| `SFTP_HOST_KEY` | Ed25519 host key, generated on first start | `./storage/ssh/ssh_host_ed25519_key` |
 
 Files are processed when the client closes the file, or when an upload is renamed to `*.pdf`. Modern `scp` (OpenSSH 9+) uses the SFTP protocol and works against this port.
 
@@ -167,8 +168,8 @@ Files are processed when the client closes the file, or when an upload is rename
 | `SCP_PORT` | Port | `2223` |
 | `SCP_USERNAME` | Username (password auth only; no shell access) | `scanner` |
 | `SCP_PASSWORD` | Password | `scanner123` |
-| `SCP_UPLOAD_DIR` | Directory clients see as `/` | `./scans` |
-| `SCP_HOST_KEY` | Ed25519 host key, generated on first start (may be shared with SFTP) | `./ssh_host_ed25519_key` |
+| `SCP_UPLOAD_DIR` | Directory clients see as `/` | `./storage/inbox` |
+| `SCP_HOST_KEY` | Ed25519 host key, generated on first start (may be shared with SFTP) | `./storage/ssh/ssh_host_ed25519_key` |
 
 This speaks the legacy SCP protocol (`scp -t`), as used by scanners and `scp -O`. Uploads only; recursive (`-r`) uploads are supported.
 
@@ -349,7 +350,7 @@ docker run -d \
 - OpenSSH 9+ `scp` uses the SFTP protocol by default. Use `scp -O` against the SCP port, or point the client at the SFTP port instead
 
 ### SSH Host Key Changed Warning
-- The host key is generated on first start at `SFTP_HOST_KEY` / `SCP_HOST_KEY`. In Docker, keep it on the `./data` volume so it survives container recreation
+- The host key is generated on first start at `SFTP_HOST_KEY` / `SCP_HOST_KEY`. In Docker, keep it on the `./storage` volume so it survives container recreation
 
 ### Folder Watcher Not Picking Up Files
 - Verify `FOLDER_INPUT_DIR` points to the correct path inside the container (use volume mounts)

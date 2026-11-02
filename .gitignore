@@ -1,5 +1,4 @@
 .idea/
-scans/
 .env
 target/
-data/
+storage/

@@ -22,7 +22,7 @@ RUN apk add --no-cache \
 
 COPY --from=builder /app/target/release/montscan .
 
-RUN mkdir -p /app/scans /app/data
+RUN mkdir -p /app/storage/inbox /app/storage/ssh
 
 # FTP control + passive range, SFTP, SCP
 EXPOSE 21 21000-21010 2222 2223
