@@ -1,10 +1,10 @@
 [package]
 name = "montscan"
-version = "0.2.0"
+version = "2.0.0"
 edition = "2024"
 license = "MIT"
 rust-version = "1.92"
-repository = "https://github.com/SystemVll/Montscan"
+repository = "https://github.com/sh4den/Montscan"
 
 [dependencies]
 anyhow = "1"
