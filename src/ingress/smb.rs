@@ -39,7 +39,7 @@ impl Config {
             )
             .unwrap_or_else(|| default.to_string())
         };
-        let ftp_upload_dir = env::string("FTP_UPLOAD_DIR", "./scans");
+        let ftp_upload_dir = env::string("FTP_UPLOAD_DIR", "./storage/inbox");
         Self {
             enabled: get("ENABLED", "false") == "true",
             host: get("HOST", "localhost"),

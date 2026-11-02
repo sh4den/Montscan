@@ -31,7 +31,7 @@ impl Config {
             port: env::parse("FTP_PORT", 21),
             username: env::string("FTP_USERNAME", "scanner"),
             password: env::string("FTP_PASSWORD", "scanner123"),
-            upload_dir: env::string("FTP_UPLOAD_DIR", "./scans").into(),
+            upload_dir: env::string("FTP_UPLOAD_DIR", "./storage/inbox").into(),
             passive_ports: env::get("FTP_PASSIVE_PORTS")
                 .and_then(|v| parse_port_range(&v))
                 .unwrap_or(21000..=21010),
