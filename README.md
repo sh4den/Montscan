@@ -1,247 +1,215 @@
-> [!NOTE] 
-> Montscan is not fully production-ready and is currently in active development but is fairly usable.</br> 
-> It achieve **97.5%** success rate on a small test set of 1000 documents.
+> [!NOTE]
+> Montscan is still in active development and not fully production-ready, but it is usable day to day.
+> On a test set of 1000 documents it named 97.5% of them correctly.
 
 <div align="center">
 
   ![510231426-ced68675-3338-4e7e-b9a0-5a9fc887aeac-2](https://github.com/user-attachments/assets/b82fb45f-f583-440e-a7f0-c6559125afcc)
-  
+
 </div>
 
-<div align="center">
-  <p><b>Montscan</b>: Automated scanner document processor with Vision AI, AI naming, and flexible upload!</p>
-</div>
+# Montscan
 
-<p align="center">
-  ⭐ If you find <b>Montscan</b> useful, please consider giving it a star it really helps the project grow!
-</p>
+Montscan receives scanned documents from your network scanner, reads them with a local Ollama vision model, gives each file a descriptive name, and delivers it wherever you keep your documents.
 
----
+If it's useful to you, a star on GitHub is appreciated.
 
-## ✨ Features
+## Features
 
-- 📡 **FTP Server** - Receives documents from network scanners via FTP
-- 🔐 **SFTP Server** - Receives documents over SSH file transfer
-- 📤 **SCP Server** - Receives documents via the legacy SCP protocol
-- 📥 **Samba Server** - Polls a remote SMB share for incoming PDFs
-- 📂 **Folder Watcher** - Monitors a local directory; renames in place or moves to an output folder
-- 👁️ **Vision AI Processing** - Analyzes scanned documents using Ollama vision models
-- 🤖 **AI-Powered Naming** - Generates descriptive, date-aware filenames via Ollama
-- ☁️ **WebDAV Integration** - Uploads processed documents to Nextcloud, ownCloud, and any WebDAV server
-- 🗂️ **Samba Provider** - Delivers processed documents to an SMB/CIFS network share
-- 🐳 **Docker Support** - Easy deployment with Docker Compose
+- Receives scans over FTP, SFTP or legacy SCP, by polling a remote SMB share, or by watching a local folder
+- Reads each document with an Ollama vision model and generates a dated, descriptive filename
+- Delivers the result to WebDAV (Nextcloud, ownCloud, etc.), an SMB/CIFS share, or a local output folder (or renames it in place)
+- Ships as a single binary and a Docker Compose setup
 
----
+## Contents
 
-## 🦀 Rust Rewrite
+- [Rust rewrite](#rust-rewrite)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Docker](#docker)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
 
-Montscan was originally written in Go. Starting with **v2.0.0** it has been rewritten from the ground up in Rust. The goal was a single self-contained binary, cleaner boundaries between components, and room to add new ways for scanners to send documents.
+## Rust rewrite
+
+Montscan was originally written in Go. Version 2.0.0 is a full rewrite in Rust. I wanted a single self-contained binary, clearer separation between components, and an easier way to add new protocols for receiving scans.
 
 ### What changed
 
-- **No more external PDF tools** - The Go version shelled out to Poppler (`pdftoppm`) or ImageMagick to turn PDFs into images. Pages are now rendered in-process with [`hayro`](https://crates.io/crates/hayro), so nothing beyond the `montscan` binary is needed at runtime.
-- **New ingresses** - Montscan can now receive documents over **SFTP** and the legacy **SCP** protocol, alongside FTP, Samba polling and the folder watcher.
-- **Pluggable architecture** - Every ingress implements a common `Ingress` trait and only hands finished PDFs to the document processor. Delivery (WebDAV, Samba, local move) lives in a separate `egress` module. Adding a new protocol no longer touches the AI or upload code. See [Architecture](#️-architecture).
-- **Better FTP behind NAT/Docker** - The passive port range and advertised address can now be configured (`FTP_PASSIVE_PORTS`, `FTP_PASSIVE_HOST`).
-- **Ollama timeout** - `OLLAMA_TIMEOUT` sets how long Montscan waits for a filename before falling back to `scan_<timestamp>.pdf`. This is useful for slower "thinking" vision models.
-- **Smaller Docker image** - The runtime image no longer installs `poppler-utils`.
+- PDF pages are now rendered in-process with [`hayro`](https://crates.io/crates/hayro). The Go version shelled out to Poppler (`pdftoppm`) or ImageMagick; now the `montscan` binary is all you need at runtime.
+- Documents can now arrive over SFTP and legacy SCP, in addition to FTP, Samba polling and the folder watcher.
+- Every ingress implements a common `Ingress` trait and only passes finished PDFs to the document processor. Delivery (WebDAV, Samba, local move) lives in a separate `egress` module, so adding a protocol doesn't touch the AI or upload code. See [Architecture](#architecture).
+- The FTP passive port range and advertised address are configurable (`FTP_PASSIVE_PORTS`, `FTP_PASSIVE_HOST`), which fixes most problems behind NAT or Docker.
+- `OLLAMA_TIMEOUT` controls how long Montscan waits for a filename before falling back to `scan_<timestamp>.pdf`. Raise it for slower "thinking" models.
+- The Docker image no longer installs `poppler-utils` and is smaller as a result.
 
 ### Upgrading from 1.x
 
 > [!WARNING]
-> **v2.0.0 is a breaking release and is not backward compatible with 1.x.** Read the notes below before upgrading.
-> The Go implementation (1.x) is kept on the [`legacy-v1.0.0`](https://github.com/sh4den/Montscan/tree/legacy-v1.0.0) branch and no longer receives updates.
+> 2.0.0 is a breaking release and is not backward compatible with 1.x.
+> The Go version is kept on the [`legacy-v1.0.0`](https://github.com/sh4den/Montscan/tree/legacy-v1.0.0) branch and no longer receives updates.
 
-- **Environment variables** keep their names. The legacy `SAMBA_INGRESS_*` names are still accepted as fallbacks for `SAMBA_SERVER_*`.
-- **Name collisions** - Uploads to WebDAV and Samba, and files received over FTP, replace an existing file with the same name. 1.x appended `_1`, `_2`, … instead. Local moves by the folder watcher still never overwrite.
-- **Runtime files moved to `storage/`** - Received scans now default to `./storage/inbox` (previously `./scans`), and SSH host keys live in `./storage/ssh`. If you relied on the old default, set `FTP_UPLOAD_DIR=./scans` or move the folder.
-- **Building from source** now requires Rust 1.92+ instead of Go (`cargo build --release`).
-- **Docker** - Pull the new image (`docker-compose pull`), or rebuild it if you build from source. If you enable SFTP or SCP, publish ports `2222`/`2223` and mount `./storage:/app/storage` so received scans and the generated SSH host key survive container recreation. The provided `docker-compose.yml` already does both.
-- **Logging** now uses `RUST_LOG` (default `info`).
+- Environment variable names are unchanged. The old `SAMBA_INGRESS_*` names still work as fallbacks for `SAMBA_SERVER_*`.
+- Uploads to WebDAV and Samba, and files received over FTP, now overwrite an existing file with the same name. 1.x appended `_1`, `_2`, and so on. Local moves by the folder watcher still never overwrite.
+- Runtime files now live under `storage/`. Received scans default to `./storage/inbox` (was `./scans`) and SSH host keys go in `./storage/ssh`. If you relied on the old location, set `FTP_UPLOAD_DIR=./scans` or move the folder.
+- Building from source needs Rust 1.92 or newer (`cargo build --release`).
+- For Docker, pull the new image (`docker-compose pull`) or rebuild it. If you enable SFTP or SCP, publish ports `2222`/`2223` and mount `./storage:/app/storage` so scans and the generated host key survive container recreation. The included `docker-compose.yml` already does this.
+- Logging is controlled by `RUST_LOG` (default `info`).
 
-### A note on AI assistance
+### On AI assistance
 
-AI tools helped during the rewrite, mainly to organize the work into commits and to audit the code for bugs and edge cases. Every change was reviewed before it was merged.
+I used AI tools during the rewrite, mostly to split the work into commits and to look for bugs and edge cases. I reviewed every change before merging it.
 
----
+## Architecture
 
-## 📋 Table of Contents
-
-- [Rust Rewrite](#-rust-rewrite)
-- [Architecture](#️-architecture)
-- [Prerequisites](#-prerequisites)
-- [Installation](#-installation)
-- [Configuration](#️-configuration-options)
-- [Usage](#-usage)
-- [Docker Deployment](#-docker-deployment)
-- [Troubleshooting](#-troubleshooting)
-- [License](#-license)
-
----
-
-## 🏗️ Architecture
-
-Montscan is written entirely in Rust, with no external programs or C libraries required at runtime (PDF pages are rendered in-process). It is a single crate; all code lives in `src/`. Each ingress is a module under `src/ingress/`, built on an existing protocol library, and implements the `Ingress` trait. Ingresses only hand finished PDFs to a `DocumentProcessor`; they know nothing about AI naming or delivery.
+Montscan is a single Rust crate with all code in `src/`. It doesn't need any external programs or C libraries at runtime. Each ingress is a module under `src/ingress/`, built on an existing protocol library, and implements the `Ingress` trait. An ingress only hands finished PDFs to a `DocumentProcessor` and knows nothing about naming or delivery.
 
 | Module | Role | Built on |
 |---|---|---|
-| `ingress` | `Ingress` / `DocumentProcessor` traits | — |
+| `ingress` | `Ingress` / `DocumentProcessor` traits | |
 | `ingress::ftp` | FTP ingress | [`libunftp`](https://crates.io/crates/libunftp) + [`unftp-sbe-fs`](https://crates.io/crates/unftp-sbe-fs) |
 | `ingress::sftp` | SFTP ingress | [`russh`](https://crates.io/crates/russh) + [`russh-sftp`](https://crates.io/crates/russh-sftp) |
-| `ingress::scp` | SCP ingress | [`russh`](https://crates.io/crates/russh) (no SCP server crate exists; the small SCP sink protocol is implemented in the module) |
-| `ingress::smb` | SMB share poller | [`smb`](https://crates.io/crates/smb) (pure Rust SMB2/3 client) |
+| `ingress::scp` | SCP ingress | [`russh`](https://crates.io/crates/russh); there is no SCP server crate, so the sink side of the protocol is implemented in the module |
+| `ingress::smb` | SMB share poller | [`smb`](https://crates.io/crates/smb), a pure Rust SMB2/3 client |
 | `ingress::folder` | Local folder watcher | `tokio` |
 | `ingress::ssh` | Host key, auth and path jailing shared by SFTP and SCP | `russh` |
-| `agent` | PDF rendering and Ollama filename generation | [`hayro`](https://crates.io/crates/hayro) (pure Rust PDF renderer), `reqwest`, `image` |
+| `agent` | PDF rendering and Ollama filename generation | [`hayro`](https://crates.io/crates/hayro), `reqwest`, `image` |
 | `egress` | WebDAV / Samba / local delivery | `reqwest`, `smb` |
-| `config`, `env`, `banner` | Settings and startup banner | — |
+| `config`, `env`, `banner` | Settings and startup banner | |
 
----
+## Prerequisites
 
-## 🔧 Prerequisites
+- Rust 1.92 or newer, if you build from source
+- [Ollama](https://ollama.ai/) with a vision model such as `llava` or `llama3.2-vision`
+- Optionally, a WebDAV server or SMB share to deliver files to
 
-- **Rust 1.92+** (to build from source)
-- **Ollama** - [Installation guide](https://ollama.ai/) with a vision model (e.g., `llava`, `llama3.2-vision`)
-- **WebDAV server** or **SMB share** (optional) - For processed file delivery
+## Installation
 
----
+```bash
+git clone https://github.com/sh4den/Montscan.git
+cd Montscan
+cargo build --release   # produces target/release/montscan
+```
 
-## 📦 Installation
+Install Ollama and pull a vision-capable model:
 
-### Local Installation
+```bash
+ollama pull llava
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/sh4den/Montscan.git
-   cd Montscan
-   ```
+## Configuration
 
-2. **Build the application**
-   ```bash
-   cargo build --release
-   # binary: target/release/montscan
-   ```
+Montscan is configured through environment variables. You need at least one ingress enabled. You should also configure an egress, unless you use the folder watcher, which can rename or move files on its own. Egress is picked in this order: WebDAV, then Samba, then a local move if the folder watcher is enabled. With no egress, received files stay where they landed.
 
-3. **Set up Ollama with a vision model**
-   ```bash
-   # Install Ollama from https://ollama.ai/
-   ollama pull llava
-   # or any other vision-capable model
-   ```
-
----
-
-## ⚙️ Configuration Options
-
-At least one **ingress** must be enabled. At least one **egress provider** should be configured, or the folder watcher can act as both (rename/move in place). Egress is chosen in priority order: WebDAV, then Samba, then a local move when the folder watcher is enabled. With no egress at all, received files are left where they landed.
-
-### Ingress — FTP Server
+### Ingress: FTP server
 
 | Variable | Description | Default |
 |---|---|---|
-| `FTP_ENABLED` | Enable the FTP ingress server | `true` |
-| `FTP_HOST` | FTP server bind address | `0.0.0.0` |
-| `FTP_PORT` | FTP server port | `21` |
-| `FTP_USERNAME` | FTP authentication username | `scanner` |
-| `FTP_PASSWORD` | FTP authentication password | `scanner123` |
+| `FTP_ENABLED` | Enable the FTP server | `true` |
+| `FTP_HOST` | Bind address | `0.0.0.0` |
+| `FTP_PORT` | Port | `21` |
+| `FTP_USERNAME` | Username | `scanner` |
+| `FTP_PASSWORD` | Password | `scanner123` |
 | `FTP_UPLOAD_DIR` | Local directory for received files | `./storage/inbox` |
 | `FTP_PASSIVE_PORTS` | Passive data port range | `21000-21010` |
-| `FTP_PASSIVE_HOST` | Address advertised for passive connections (set to the host's LAN IP behind Docker/NAT) | *(control connection address)* |
+| `FTP_PASSIVE_HOST` | Address advertised for passive connections (set this to the host's LAN IP behind Docker/NAT) | *(control connection address)* |
 
-Files are processed once a `STOR` completes, or when an upload is renamed to `*.pdf`.
+A file is processed once its `STOR` completes, or when an upload is renamed to `*.pdf`.
 
-### Ingress — SFTP Server
+### Ingress: SFTP server
 
 | Variable | Description | Default |
 |---|---|---|
-| `SFTP_ENABLED` | Enable the SFTP ingress server | `false` |
+| `SFTP_ENABLED` | Enable the SFTP server | `false` |
 | `SFTP_HOST` | Bind address | `0.0.0.0` |
 | `SFTP_PORT` | Port | `2222` |
-| `SFTP_USERNAME` | Username (password auth only; no shell access) | `scanner` |
+| `SFTP_USERNAME` | Username (password auth only, no shell) | `scanner` |
 | `SFTP_PASSWORD` | Password | `scanner123` |
 | `SFTP_UPLOAD_DIR` | Directory clients see as `/` | `./storage/inbox` |
 | `SFTP_HOST_KEY` | Ed25519 host key, generated on first start | `./storage/ssh/ssh_host_ed25519_key` |
 
-Files are processed when the client closes the file, or when an upload is renamed to `*.pdf`. Modern `scp` (OpenSSH 9+) uses the SFTP protocol and works against this port.
+A file is processed when the client closes it, or when an upload is renamed to `*.pdf`. Modern `scp` (OpenSSH 9+) actually uses SFTP, so it works against this port.
 
-### Ingress — SCP Server
+### Ingress: SCP server
 
 | Variable | Description | Default |
 |---|---|---|
-| `SCP_ENABLED` | Enable the SCP ingress server | `false` |
+| `SCP_ENABLED` | Enable the SCP server | `false` |
 | `SCP_HOST` | Bind address | `0.0.0.0` |
 | `SCP_PORT` | Port | `2223` |
-| `SCP_USERNAME` | Username (password auth only; no shell access) | `scanner` |
+| `SCP_USERNAME` | Username (password auth only, no shell) | `scanner` |
 | `SCP_PASSWORD` | Password | `scanner123` |
 | `SCP_UPLOAD_DIR` | Directory clients see as `/` | `./storage/inbox` |
-| `SCP_HOST_KEY` | Ed25519 host key, generated on first start (may be shared with SFTP) | `./storage/ssh/ssh_host_ed25519_key` |
+| `SCP_HOST_KEY` | Ed25519 host key, generated on first start (can be shared with SFTP) | `./storage/ssh/ssh_host_ed25519_key` |
 
-This speaks the legacy SCP protocol (`scp -t`), as used by scanners and `scp -O`. Uploads only; recursive (`-r`) uploads are supported.
+This is the legacy SCP protocol (`scp -t`), which is what most scanners and `scp -O` use. Only uploads are supported; recursive (`-r`) uploads work.
 
-### Ingress — Samba Server (polls a remote SMB share)
+### Ingress: Samba server (polls a remote SMB share)
 
 | Variable | Description | Default |
 |---|---|---|
-| `SAMBA_SERVER_ENABLED` | Enable the Samba ingress poller | `false` |
+| `SAMBA_SERVER_ENABLED` | Enable the Samba poller | `false` |
 | `SAMBA_SERVER_HOST` | SMB server hostname or IP | `localhost` |
 | `SAMBA_SERVER_PORT` | SMB port | `445` |
-| `SAMBA_SERVER_USERNAME` | SMB username | - |
-| `SAMBA_SERVER_PASSWORD` | SMB password | - |
-| `SAMBA_SERVER_SHARE` | Share name to mount | `scans` |
+| `SAMBA_SERVER_USERNAME` | SMB username | |
+| `SAMBA_SERVER_PASSWORD` | SMB password | |
+| `SAMBA_SERVER_SHARE` | Share name | `scans` |
 | `SAMBA_SERVER_PATH` | Path within the share to watch | `/scans` |
 | `SAMBA_SERVER_POLL_INTERVAL_SEC` | Polling interval in seconds | `10` |
-| `SAMBA_SERVER_DELETE_AFTER_READ` | Remove file from share after download | `true` |
-| `SAMBA_SERVER_WORK_DIR` | Local staging directory | *(FTP_UPLOAD_DIR)* |
+| `SAMBA_SERVER_DELETE_AFTER_READ` | Delete the file from the share after downloading it | `true` |
+| `SAMBA_SERVER_WORK_DIR` | Local staging directory | *(`FTP_UPLOAD_DIR`)* |
 
-### Ingress — Folder Watcher (monitors a local directory)
+### Ingress: folder watcher
 
 | Variable | Description | Default |
 |---|---|---|
-| `FOLDER_ENABLED` | Enable the local folder watcher | `false` |
-| `FOLDER_INPUT_DIR` | Directory to watch for incoming PDFs | `./input` |
-| `FOLDER_OUTPUT_DIR` | Destination for renamed files; omit to rename in place | - |
+| `FOLDER_ENABLED` | Enable the folder watcher | `false` |
+| `FOLDER_INPUT_DIR` | Directory to watch for PDFs | `./input` |
+| `FOLDER_OUTPUT_DIR` | Where renamed files go; leave unset to rename in place | |
 | `FOLDER_POLL_INTERVAL_SEC` | Polling interval in seconds | `5` |
 
-### Egress — WebDAV Provider
+### Egress: WebDAV
 
 | Variable | Description | Default |
 |---|---|---|
 | `WEBDAV_ENABLED` | Enable WebDAV upload | `false` |
-| `WEBDAV_URL` | WebDAV server base URL | - |
-| `WEBDAV_USERNAME` | WebDAV username | - |
-| `WEBDAV_PASSWORD` | WebDAV password | - |
-| `WEBDAV_UPLOAD_PATH` | Remote path for uploaded files | `/Documents/Scanned` |
-| `WEBDAV_INSECURE` | Skip TLS verification | `false` |
+| `WEBDAV_URL` | Server base URL | |
+| `WEBDAV_USERNAME` | Username | |
+| `WEBDAV_PASSWORD` | Password | |
+| `WEBDAV_UPLOAD_PATH` | Remote folder for uploads | `/Documents/Scanned` |
+| `WEBDAV_INSECURE` | Skip TLS certificate verification | `false` |
 
-### Egress — Samba Provider (uploads to an SMB share)
+### Egress: Samba (uploads to an SMB share)
 
 | Variable | Description | Default |
 |---|---|---|
 | `SAMBA_ENABLED` | Enable Samba upload | `false` |
 | `SAMBA_HOST` | SMB server hostname or IP | `localhost` |
 | `SAMBA_PORT` | SMB port | `445` |
-| `SAMBA_USERNAME` | SMB username | - |
-| `SAMBA_PASSWORD` | SMB password | - |
-| `SAMBA_SHARE` | Destination share name | `scans` |
+| `SAMBA_USERNAME` | SMB username | |
+| `SAMBA_PASSWORD` | SMB password | |
+| `SAMBA_SHARE` | Destination share | `scans` |
 | `SAMBA_PATH` | Path within the share | `scans` |
 
-### AI Processing
+### Naming (Ollama)
 
 | Variable | Description | Default |
 |---|---|---|
-| `OLLAMA_HOST` | Ollama service URL | `http://localhost:11434` |
-| `OLLAMA_MODEL` | Vision model to use | `qwen3-vl:8b` |
+| `OLLAMA_HOST` | Ollama URL | `http://localhost:11434` |
+| `OLLAMA_MODEL` | Vision model | `qwen3-vl:8b` |
 | `OLLAMA_NUM_CTX` | Context window (tokens) requested per call | `8192` |
-| `OLLAMA_TIMEOUT` | Seconds to wait for Ollama before falling back to a timestamped name | `120` |
-| `LANGUAGE` | Language for AI-generated filenames | `english` |
+| `OLLAMA_TIMEOUT` | Seconds to wait before falling back to a timestamped name | `120` |
+| `LANGUAGE` | Language of the generated filenames | `english` |
 
----
+## Usage
 
-## 🚀 Usage
+### Example setups
 
-### Typical setups
+Scanner to FTP, delivered to WebDAV:
 
-**Scanner → FTP → WebDAV**
 ```bash
 FTP_ENABLED=true
 FTP_USERNAME=scanner
@@ -252,26 +220,22 @@ WEBDAV_USERNAME=user
 WEBDAV_PASSWORD=secret
 ```
 
-**Scanner → Samba share → local folder watcher → output folder**
-
-This is the simplest setup when your scanner already drops files onto a Samba share that is mounted locally. Montscan watches the mount, renames each PDF with an AI-generated name, and moves it to an output directory.
+Scanner writes to a Samba share that is mounted locally. Montscan watches the mount, names each PDF and moves it to an output folder:
 
 ```bash
 FOLDER_ENABLED=true
-FOLDER_INPUT_DIR=/mnt/scanner       # your Samba mount point
-FOLDER_OUTPUT_DIR=/mnt/documents    # where renamed files land
+FOLDER_INPUT_DIR=/mnt/scanner       # Samba mount point
+FOLDER_OUTPUT_DIR=/mnt/documents    # where named files end up
 FOLDER_POLL_INTERVAL_SEC=5
 FTP_ENABLED=false
 ```
 
-**Scanner → Samba share → local folder watcher → rename in place**
-
-Same as above but without a separate output directory — files are renamed where they sit.
+Same thing, but renaming files where they are:
 
 ```bash
 FOLDER_ENABLED=true
 FOLDER_INPUT_DIR=/mnt/scanner
-# FOLDER_OUTPUT_DIR not set → rename in place
+# no FOLDER_OUTPUT_DIR, so files are renamed in place
 FTP_ENABLED=false
 ```
 
@@ -279,49 +243,37 @@ FTP_ENABLED=false
 
 ```bash
 cp .env.example .env
-# edit .env with your values
+# edit .env
 export $(grep -v '^#' .env | xargs)
 ./target/release/montscan
 ```
 
-Logging defaults to `info`; override with `RUST_LOG` (e.g. `RUST_LOG=debug`).
+Logging defaults to `info`. Set `RUST_LOG=debug` for more detail.
 
----
+## Docker
 
-## 🐳 Docker Deployment
+### Docker Compose
 
-### Using Docker Compose
+Set your environment variables in `docker-compose.yml`, then start it:
 
-1. **Update environment variables in `docker-compose.yml`**
+```bash
+docker-compose up -d
+```
 
-2. **(Optional) Enable GPU acceleration for Ollama**
+This uses the prebuilt image from GitHub Container Registry (`ghcr.io/sh4den/montscan`). To build from source instead, uncomment the `build: .` line in `docker-compose.yml` and run `docker-compose up -d --build`.
 
-   By default, Ollama runs on CPU. To use an NVIDIA GPU, set in `.env`:
-   ```bash
-   COMPOSE_PROFILES=gpu
-   OLLAMA_GPU_COUNT=1
-   ```
-   Leave `COMPOSE_PROFILES=cpu` (or unset) for CPU-only.
+Ollama runs on CPU by default. To use an NVIDIA GPU, add this to `.env`:
 
-3. **Start the container**
+```bash
+COMPOSE_PROFILES=gpu
+OLLAMA_GPU_COUNT=1
+```
 
-   By default the prebuilt image from GitHub Container Registry (`ghcr.io/sh4den/montscan`) is used:
-   ```bash
-   docker-compose up -d
-   ```
-   To build from source instead, uncomment the `build: .` line in `docker-compose.yml` and run `docker-compose up -d --build`.
+Leave `COMPOSE_PROFILES=cpu` (or unset) for CPU only.
 
-4. **View logs**
-   ```bash
-   docker-compose logs -f
-   ```
+Follow the logs with `docker-compose logs -f` and stop everything with `docker-compose down`.
 
-5. **Stop the container**
-   ```bash
-   docker-compose down
-   ```
-
-### Using Docker directly
+### Plain Docker
 
 ```bash
 docker build -t montscan .
@@ -340,66 +292,36 @@ docker run -d \
   montscan
 ```
 
----
+## Troubleshooting
 
-## 🔍 Troubleshooting
+**FTP connection refused.** Make sure port 21 isn't blocked by a firewall. On Windows, allow Montscan through Windows Defender Firewall.
 
-### FTP Connection Refused
-- Check that port 21 is not blocked by a firewall
-- On Windows, allow the application through Windows Defender Firewall
+**FTP uploads hang after login (Docker).** Passive data connections have to reach the container. Publish the `FTP_PASSIVE_PORTS` range and set `FTP_PASSIVE_HOST` to the Docker host's LAN IP.
 
-### FTP Uploads Hang After Login (Docker)
-- Passive data connections must reach the container: publish `FTP_PASSIVE_PORTS` and set `FTP_PASSIVE_HOST` to the Docker host's LAN IP
+**SCP fails with "subsystem request failed".** OpenSSH 9+ `scp` uses SFTP by default. Use `scp -O` against the SCP port, or point the client at the SFTP port.
 
-### SCP Fails with "subsystem request failed"
-- OpenSSH 9+ `scp` uses the SFTP protocol by default. Use `scp -O` against the SCP port, or point the client at the SFTP port instead
+**SSH host key changed warning.** The host key is generated on first start at `SFTP_HOST_KEY` / `SCP_HOST_KEY`. In Docker, keep it on the `./storage` volume so it isn't regenerated when the container is recreated.
 
-### SSH Host Key Changed Warning
-- The host key is generated on first start at `SFTP_HOST_KEY` / `SCP_HOST_KEY`. In Docker, keep it on the `./storage` volume so it survives container recreation
+**Folder watcher doesn't pick up files.** Check that `FOLDER_INPUT_DIR` is the path inside the container (with a volume mounted to it) and that the process can read it. If your scanner writes slowly, increase `FOLDER_POLL_INTERVAL_SEC`.
 
-### Folder Watcher Not Picking Up Files
-- Verify `FOLDER_INPUT_DIR` points to the correct path inside the container (use volume mounts)
-- Check that the directory is readable by the process running Montscan
-- Increase `FOLDER_POLL_INTERVAL_SEC` if the scanner writes files slowly
+**Files get a `scan_YYYYMMDD_HHMMSS.pdf` name.** That's the fallback when naming fails. Check that Ollama is running (`ollama list`) and that the configured model supports vision. For slow models, raise `OLLAMA_TIMEOUT`.
 
-### AI Naming Fails
-- Verify Ollama is running: `ollama list`
-- Ensure you have a vision-capable model installed (e.g., `llava`, `llama3.2-vision`)
-- Montscan falls back to a timestamp filename (`scan_YYYYMMDD_HHMMSS.pdf`) on AI failure
+**WebDAV upload fails.** Double-check the URL and credentials, and make sure the upload path exists on the server. For Nextcloud, the URL should end with `/remote.php/webdav`. With a self-signed certificate, set `WEBDAV_INSECURE=true`.
 
-### WebDAV Upload Fails
-- Check credentials and URL
-- Ensure the upload path exists on the server
-- For Nextcloud: verify WebDAV is enabled and the URL ends with `/remote.php/webdav`
-- Try `WEBDAV_INSECURE=true` if you use a self-signed certificate
+**"failed to parse PDF".** Encrypted (password-protected) PDFs aren't supported. Turn off PDF encryption on the scanner.
 
-### Scan Fails with "failed to parse PDF"
-- Password-protected (encrypted) PDFs are not supported; disable PDF encryption on the scanner
+## License
 
----
+MIT. See [LICENSE](LICENSE).
 
-## 📝 License
+## Acknowledgments
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+Montscan is built on these projects:
 
----
+- [libunftp](https://github.com/bolcom/libunftp), async FTP server
+- [russh](https://github.com/Eugeny/russh) and [russh-sftp](https://github.com/AspectUnk/russh-sftp), SSH and SFTP servers
+- [smb-rs](https://github.com/afiffon/smb-rs), pure Rust SMB2/3 client
+- [Ollama](https://ollama.ai/), local model runner
+- [reqwest](https://github.com/seanmonstar/reqwest), HTTP client for Ollama and WebDAV
 
-## 🙏 Acknowledgments
-
-- [libunftp](https://github.com/bolcom/libunftp) - Async FTP server library for Rust
-- [russh](https://github.com/Eugeny/russh) and [russh-sftp](https://github.com/AspectUnk/russh-sftp) - SSH and SFTP server libraries for Rust
-- [smb-rs](https://github.com/afiffon/smb-rs) - Pure Rust SMB2/3 client
-- [Ollama](https://ollama.ai/) - Local AI vision model runner
-- [reqwest](https://github.com/seanmonstar/reqwest) - HTTP client used for Ollama and WebDAV
-
----
-
-## 📧 Contact
-
-For questions or support, please open an issue on GitHub.
-
----
-
-<div align="center">
-  <strong>Made with ❤️ for automated document management</strong>
-</div>
+Questions and bug reports are welcome as GitHub issues.
