@@ -33,7 +33,7 @@ Naming runs locally through Ollama, so your documents are never sent to a third-
 
 ---
 
-**[Releases](https://github.com/sh4den/Montscan/releases) &nbsp;|&nbsp; [Docker image](https://github.com/sh4den/Montscan/pkgs/container/montscan) &nbsp;|&nbsp; [Configuration](#configuration) &nbsp;|&nbsp; [Issues](https://github.com/sh4den/Montscan/issues) &nbsp;|&nbsp; [Contributing](CONTRIBUTING.md)**
+**[Download latest release](https://github.com/sh4den/Montscan/releases/latest) &nbsp;|&nbsp; [Docker image](https://github.com/sh4den/Montscan/pkgs/container/montscan) &nbsp;|&nbsp; [Configuration](#configuration) &nbsp;|&nbsp; [Issues](https://github.com/sh4den/Montscan/issues) &nbsp;|&nbsp; [Contributing](CONTRIBUTING.md)**
 
 ---
 
