@@ -1,16 +1,45 @@
+<p align="center">
+    <img src="https://github.com/user-attachments/assets/b82fb45f-f583-440e-a7f0-c6559125afcc" alt="Montscan" width="auto" />
+</p>
+
+<p align="center">
+    <a href="https://github.com/sh4den/Montscan/blob/main/LICENSE" alt="License">
+        <img src="https://img.shields.io/github/license/sh4den/Montscan" /></a>
+    <a href="https://github.com/sh4den/Montscan/releases/latest" alt="Release">
+        <img src="https://img.shields.io/github/v/release/sh4den/Montscan" /></a>
+    <a href="https://github.com/sh4den/Montscan/actions/workflows/docker-publish.yml" alt="Docker build">
+        <img src="https://img.shields.io/github/actions/workflow/status/sh4den/Montscan/docker-publish.yml?label=docker%20build" /></a>
+    <a href="https://github.com/sh4den/Montscan/pkgs/container/montscan" alt="Docker image">
+        <img src="https://img.shields.io/badge/image-ghcr.io%2Fsh4den%2Fmontscan-blue?logo=docker&logoColor=white" /></a>
+    <a href="https://www.rust-lang.org/" alt="Rust">
+        <img src="https://img.shields.io/badge/rust-1.92%2B-orange?logo=rust" /></a>
+    <a href="https://ollama.com/" alt="Ollama">
+        <img src="https://img.shields.io/badge/AI-Ollama-black?logo=ollama" /></a>
+    <a href="https://www.conventionalcommits.org/" alt="Conventional Commits">
+        <img src="https://img.shields.io/badge/commits-conventional-fe5196?logo=conventionalcommits&logoColor=white" /></a>
+    <a href="https://github.com/sh4den/Montscan/commits/dev" alt="Last commit">
+        <img src="https://img.shields.io/github/last-commit/sh4den/Montscan/dev" /></a>
+    <a href="https://github.com/sh4den/Montscan/issues" alt="Issues">
+        <img src="https://img.shields.io/github/issues/sh4den/Montscan" /></a>
+    <a href="https://github.com/sh4den/Montscan/graphs/contributors" alt="Contributors">
+        <img src="https://img.shields.io/github/contributors/sh4den/Montscan" /></a>
+</p>
+
+## Self-hosted naming and filing for scanned documents
+
+**Montscan** receives scanned documents from your network scanner, reads them with a local Ollama vision model, gives each file a descriptive, dated name, and delivers it wherever you keep your documents. It speaks FTP, SFTP, SCP and SMB, so most scanners work with it without extra software.
+
+Naming runs locally through Ollama, so your documents are never sent to a third-party AI service and no API key is needed.
+
+---
+
+**[Releases](https://github.com/sh4den/Montscan/releases) &nbsp;|&nbsp; [Docker image](https://github.com/sh4den/Montscan/pkgs/container/montscan) &nbsp;|&nbsp; [Configuration](#configuration) &nbsp;|&nbsp; [Issues](https://github.com/sh4den/Montscan/issues) &nbsp;|&nbsp; [Contributing](CONTRIBUTING.md)**
+
+---
+
 > [!NOTE]
 > Montscan is still in active development and not fully production-ready, but it is usable day to day.
 > On a test set of 1000 documents it named 97.5% of them correctly.
-
-<div align="center">
-
-  ![510231426-ced68675-3338-4e7e-b9a0-5a9fc887aeac-2](https://github.com/user-attachments/assets/b82fb45f-f583-440e-a7f0-c6559125afcc)
-
-</div>
-
-# Montscan
-
-Montscan receives scanned documents from your network scanner, reads them with a local Ollama vision model, gives each file a descriptive name, and delivers it wherever you keep your documents.
 
 If it's useful to you, a star on GitHub is appreciated.
 
