@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="https://github.com/user-attachments/assets/b82fb45f-f583-440e-a7f0-c6559125afcc" alt="Montscan" width="auto" />
+    <img src="https://github.com/user-attachments/assets/94cde99a-3532-41ce-b863-568d19aa76ea" width="256" alt="Montscan" width="auto" />
 </p>
 
 <p align="center">
