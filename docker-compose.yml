@@ -5,7 +5,7 @@ x-ollama-common: &ollama-common
   ports:
     - "11434:11434"
   environment:
-    - OLLAMA_MODEL=${OLLAMA_MODEL:-llava}
+    - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3-vl:8b}
   volumes:
     - ollama-data:/root/.ollama
   networks:
@@ -89,9 +89,13 @@ services:
 
       # LLM settings
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-llava}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3-vl:8b}
       - OLLAMA_NUM_CTX=${OLLAMA_NUM_CTX:-8192}
       - OLLAMA_TIMEOUT=${OLLAMA_TIMEOUT:-120}
+      - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-30m}
+      - OLLAMA_THINK=${OLLAMA_THINK:-false}
+      - OLLAMA_IMAGE_MAX_SIZE=${OLLAMA_IMAGE_MAX_SIZE:-1536}
+      - MAX_CONCURRENT_DOCUMENTS=${MAX_CONCURRENT_DOCUMENTS:-1}
 
       # Prompt settings
       - LANGUAGE=${LANGUAGE:-English}

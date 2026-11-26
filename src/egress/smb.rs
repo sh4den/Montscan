@@ -42,7 +42,7 @@ impl Samba {
         let data = tokio::fs::read(local)
             .await
             .context("failed to open local file")?;
-        let (client, share) = crate::ingress::smb::connect(
+        let share = crate::ingress::smb::connect(
             &self.host,
             self.port,
             &self.share,
@@ -58,22 +58,23 @@ impl Samba {
             format!("{}\\{filename}", self.path)
         };
         let result = async {
-            let file = client
+            let file = share
+                .client
                 .create_file(
-                    &share.clone().with_path(&remote),
+                    &share.unc.clone().with_path(&remote),
                     &FileCreateArgs::make_overwrite(FileAttributes::new(), CreateOptions::new()),
                 )
                 .await
                 .context("failed to create remote file")?
                 .unwrap_file();
-            let written = crate::ingress::smb::write_all(&file, &data)
+            let written = crate::ingress::smb::write_all(&file, &data, share.write_chunk)
                 .await
                 .context("failed to write to remote file");
             let _ = file.close().await;
             written
         }
         .await;
-        let _ = client.close().await;
+        share.close().await;
         result?;
 
         tracing::info!("Successfully uploaded to Samba: {remote}");

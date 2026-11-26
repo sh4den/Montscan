@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::{Context, bail};
 use reqwest::{Method, Response, StatusCode};
@@ -14,6 +15,9 @@ pub struct WebDav {
     username: String,
     password: String,
     path: Vec<String>,
+    /// Set once the upload folder is known to exist, so later uploads skip the
+    /// MKCOL round trips. Cleared when an upload fails, in case it was removed.
+    dirs_ready: AtomicBool,
 }
 
 impl WebDav {
@@ -40,6 +44,7 @@ impl WebDav {
                 .filter(|s| !s.is_empty())
                 .map(String::from)
                 .collect(),
+            dirs_ready: AtomicBool::new(false),
         })
     }
 
@@ -58,8 +63,13 @@ impl WebDav {
     }
 
     pub async fn upload(&self, local: &Path, filename: &str) -> anyhow::Result<()> {
-        if let Err(e) = self.mkdir_all().await {
-            tracing::warn!("Could not create remote directory (may already exist): {e:#}");
+        if !self.dirs_ready.load(Ordering::Relaxed) {
+            match self.mkdir_all().await {
+                Ok(()) => self.dirs_ready.store(true, Ordering::Relaxed),
+                Err(e) => {
+                    tracing::warn!("Could not create remote directory (may already exist): {e:#}")
+                }
+            }
         }
 
         let data = tokio::fs::read(local)
@@ -70,12 +80,13 @@ impl WebDav {
         let url = self.url(&segments, false)?;
         tracing::info!("Uploading to WebDAV: {url}");
 
-        let response = self
-            .send(Method::PUT, url, Some(data))
-            .await
-            .context("failed to upload to WebDAV")?;
-        if !response.status().is_success() {
-            bail!("failed to upload to WebDAV: {}", response.status());
+        match self.send(Method::PUT, url, Some(data)).await {
+            Ok(response) if response.status().is_success() => {}
+            failed => {
+                self.dirs_ready.store(false, Ordering::Relaxed);
+                let response = failed.context("failed to upload to WebDAV")?;
+                bail!("failed to upload to WebDAV: {}", response.status());
+            }
         }
         tracing::info!("Successfully uploaded to WebDAV: /{}", segments.join("/"));
         Ok(())

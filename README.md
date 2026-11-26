@@ -112,7 +112,7 @@ Montscan is a single Rust crate with all code in `src/`. It doesn't need any ext
 ## Prerequisites
 
 - Rust 1.92 or newer, if you build from source
-- [Ollama](https://ollama.ai/) with a vision model such as `llava` or `llama3.2-vision`
+- [Ollama](https://ollama.ai/) with a vision model, such as `qwen3-vl:8b` (the default), `llava` or `llama3.2-vision`
 - Optionally, a WebDAV server or SMB share to deliver files to
 
 ## Installation
@@ -126,7 +126,7 @@ cargo build --release   # produces target/release/montscan
 Install Ollama and pull a vision-capable model:
 
 ```bash
-ollama pull llava
+ollama pull qwen3-vl:8b
 ```
 
 ## Configuration
@@ -231,6 +231,10 @@ This is the legacy SCP protocol (`scp -t`), which is what most scanners and `scp
 | `OLLAMA_MODEL` | Vision model | `qwen3-vl:8b` |
 | `OLLAMA_NUM_CTX` | Context window (tokens) requested per call | `8192` |
 | `OLLAMA_TIMEOUT` | Seconds to wait before falling back to a timestamped name | `120` |
+| `OLLAMA_KEEP_ALIVE` | How long Ollama keeps the model loaded after a scan, so the next one skips the load. A duration (`30m`, `2h`) or seconds (`-1` keeps it loaded) | `30m` |
+| `OLLAMA_THINK` | `false` turns off reasoning on thinking models (much faster), `true` forces it on, `auto` leaves it to the model | `false` |
+| `OLLAMA_IMAGE_MAX_SIZE` | Longest side, in pixels, of the page image sent to the model. Larger is slower and needs more context | `1536` |
+| `MAX_CONCURRENT_DOCUMENTS` | Documents processed at the same time; the rest wait their turn | `1` |
 | `LANGUAGE` | Language of the generated filenames | `english` |
 
 ## Usage
@@ -333,7 +337,7 @@ docker run -d \
 
 **Folder watcher doesn't pick up files.** Check that `FOLDER_INPUT_DIR` is the path inside the container (with a volume mounted to it) and that the process can read it. If your scanner writes slowly, increase `FOLDER_POLL_INTERVAL_SEC`.
 
-**Files get a `scan_YYYYMMDD_HHMMSS.pdf` name.** That's the fallback when naming fails. Check that Ollama is running (`ollama list`) and that the configured model supports vision. For slow models, raise `OLLAMA_TIMEOUT`.
+**Files get a `scan_YYYYMMDD_HHMMSS.pdf` name.** That's the fallback when naming fails. Check that Ollama is running (`ollama list`) and that the configured model supports vision. For slow models, raise `OLLAMA_TIMEOUT`. The log line `Ollama: N prompt tokens, ...` shows how much of `OLLAMA_NUM_CTX` the page image uses and how long the model took to load; lowering `OLLAMA_IMAGE_MAX_SIZE` cuts both the token count and the time.
 
 **WebDAV upload fails.** Double-check the URL and credentials, and make sure the upload path exists on the server. For Nextcloud, the URL should end with `/remote.php/webdav`. With a self-signed certificate, set `WEBDAV_INSECURE=true`.
 

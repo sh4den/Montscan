@@ -6,10 +6,17 @@ WORKDIR /app
 # ring (TLS/SSH crypto) compiles C code and links against musl.
 RUN apk add --no-cache musl-dev
 
+# Build dependencies alone first, against a placeholder main.rs, so this layer
+# stays cached until Cargo.toml or Cargo.lock change.
 COPY Cargo.toml Cargo.lock ./
-COPY src ./src
+RUN mkdir src \
+    && echo 'fn main() {}' > src/main.rs \
+    && cargo build --release --locked \
+    && rm -rf src
 
-RUN cargo build --release --locked
+# Then the app itself; touch so cargo rebuilds it over the placeholder.
+COPY src ./src
+RUN touch src/main.rs && cargo build --release --locked
 
 # RUNTIME
 FROM alpine:3.24

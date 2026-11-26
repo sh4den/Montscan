@@ -14,7 +14,10 @@ use async_trait::async_trait;
 use futures_util::StreamExt;
 use tokio::io::AsyncWriteExt;
 
-pub const CHUNK: usize = 64 * 1024;
+/// Read/write size every SMB2 server accepts.
+const BASE_CHUNK: usize = 64 * 1024;
+/// Upper bound for servers that support multi-credit (large MTU) requests.
+const MAX_CHUNK: usize = 1024 * 1024;
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -61,13 +64,28 @@ impl Config {
     }
 }
 
+/// An authenticated connection to a share, plus the largest read and write
+/// sizes the server negotiated (so transfers take as few round trips as possible).
+pub struct Share {
+    pub client: Client,
+    pub unc: UncPath,
+    pub read_chunk: usize,
+    pub write_chunk: usize,
+}
+
+impl Share {
+    pub async fn close(self) {
+        let _ = self.client.close().await;
+    }
+}
+
 pub async fn connect(
     host: &str,
     port: u16,
     share: &str,
     username: &str,
     password: &str,
-) -> ::smb::Result<(Client, UncPath)> {
+) -> ::smb::Result<Share> {
     let client = Client::new(ClientConfig {
         connection: ConnectionConfig {
             port: Some(port),
@@ -79,7 +97,37 @@ pub async fn connect(
     client
         .share_connect(&unc, username, password.to_string())
         .await?;
-    Ok((client, unc))
+    let (read_chunk, write_chunk) = io_sizes(&client, host).await;
+    Ok(Share {
+        client,
+        unc,
+        read_chunk,
+        write_chunk,
+    })
+}
+
+async fn io_sizes(client: &Client, host: &str) -> (usize, usize) {
+    let Ok(connection) = client.get_connection(host).await else {
+        return (BASE_CHUNK, BASE_CHUNK);
+    };
+    let Some(info) = connection.conn_info() else {
+        return (BASE_CHUNK, BASE_CHUNK);
+    };
+    let negotiated = &info.negotiation;
+    if !negotiated.caps.large_mtu() {
+        return (BASE_CHUNK, BASE_CHUNK);
+    }
+    (
+        chunk_size(negotiated.max_read_size),
+        chunk_size(negotiated.max_write_size),
+    )
+}
+
+fn chunk_size(negotiated: u32) -> usize {
+    match negotiated as usize {
+        0 => BASE_CHUNK,
+        n => n.min(MAX_CHUNK),
+    }
 }
 
 pub fn share_path(path: &str) -> String {
@@ -89,10 +137,10 @@ pub fn share_path(path: &str) -> String {
         .join("\\")
 }
 
-pub async fn write_all(file: &File, data: &[u8]) -> ::smb::Result<()> {
+pub async fn write_all(file: &File, data: &[u8], chunk: usize) -> ::smb::Result<()> {
     let mut offset = 0;
     while offset < data.len() {
-        let end = (offset + CHUNK).min(data.len());
+        let end = (offset + chunk).min(data.len());
         let written = file.write_at(&data[offset..end], offset as u64).await?;
         if written == 0 {
             return Err(::smb::Error::InvalidState(
@@ -160,10 +208,37 @@ impl Ingress for SmbIngress {
             cfg.poll_interval.as_secs()
         );
         let mut ticker = tokio::time::interval(cfg.poll_interval);
+        ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        // One authenticated session is reused across polls; it is dropped and
+        // re-established only after a poll fails.
+        let mut connection: Option<Share> = None;
         loop {
             ticker.tick().await;
-            if let Err(e) = poll(&cfg, &work_dir, &processor).await {
+            let share = match connection {
+                Some(ref share) => share,
+                None => match connect(
+                    &cfg.host,
+                    cfg.port,
+                    &cfg.share,
+                    &cfg.username,
+                    &cfg.password,
+                )
+                .await
+                {
+                    Ok(share) => connection.insert(share),
+                    Err(e) => {
+                        tracing::warn!(
+                            "Samba server poll failed: failed to connect to SMB share: {e}"
+                        );
+                        continue;
+                    }
+                },
+            };
+            if let Err(e) = poll(&cfg, share, &work_dir, &processor).await {
                 tracing::warn!("Samba server poll failed: {e:#}");
+                if let Some(share) = connection.take() {
+                    share.close().await;
+                }
             }
         }
     }
@@ -171,32 +246,12 @@ impl Ingress for SmbIngress {
 
 async fn poll(
     cfg: &Config,
-    work_dir: &std::path::Path,
-    processor: &Processor,
-) -> anyhow::Result<()> {
-    let (client, share) = connect(
-        &cfg.host,
-        cfg.port,
-        &cfg.share,
-        &cfg.username,
-        &cfg.password,
-    )
-    .await
-    .context("failed to connect to SMB share")?;
-    let result = poll_connected(cfg, &client, &share, work_dir, processor).await;
-    let _ = client.close().await;
-    result
-}
-
-async fn poll_connected(
-    cfg: &Config,
-    client: &Client,
-    share: &UncPath,
+    share: &Share,
     work_dir: &std::path::Path,
     processor: &Processor,
 ) -> anyhow::Result<()> {
     let dir_path = share_path(&cfg.path);
-    let names = list_pdfs(client, share, &dir_path)
+    let names = list_pdfs(&share.client, &share.unc, &dir_path)
         .await
         .with_context(|| format!("failed to read smb path {:?}", cfg.path))?;
 
@@ -206,16 +261,7 @@ async fn poll_connected(
         } else {
             format!("{dir_path}\\{name}")
         };
-        match download(
-            client,
-            share,
-            &remote,
-            &name,
-            work_dir,
-            cfg.delete_after_read,
-        )
-        .await
-        {
+        match download(share, &remote, &name, work_dir, cfg.delete_after_read).await {
             Ok(local) => dispatch(processor, "SMB", local),
             Err(e) => tracing::warn!("Failed to download SMB file {remote}: {e:#}"),
         }
@@ -256,8 +302,7 @@ async fn list_pdfs(
 }
 
 async fn download(
-    client: &Client,
-    share: &UncPath,
+    share: &Share,
     remote: &str,
     name: &str,
     work_dir: &std::path::Path,
@@ -267,9 +312,10 @@ async fn download(
         .with_generic_read(true)
         .with_file_read_data(true)
         .with_delete(delete);
-    let file = client
+    let file = share
+        .client
         .create_file(
-            &share.clone().with_path(remote),
+            &share.unc.clone().with_path(remote),
             &FileCreateArgs::make_open_existing(access),
         )
         .await?
@@ -284,7 +330,7 @@ async fn download(
         let local = work_dir.join(format!("{nanos}-{name}"));
         let mut out = tokio::fs::File::create(&local).await?;
 
-        let mut buf = vec![0u8; CHUNK];
+        let mut buf = vec![0u8; share.read_chunk];
         let mut offset = 0u64;
         while offset < len {
             let n = file.read_at(&mut buf, offset).await?;
@@ -314,6 +360,13 @@ async fn download(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn clamps_negotiated_chunk_sizes() {
+        assert_eq!(chunk_size(0), BASE_CHUNK);
+        assert_eq!(chunk_size(8 * 1024 * 1024), MAX_CHUNK);
+        assert_eq!(chunk_size(32 * 1024), 32 * 1024);
+    }
 
     #[test]
     fn converts_share_paths() {

@@ -10,20 +10,24 @@ use hayro::{PixmapSettings, RenderCache, RenderSettings};
 const DPI: f32 = 300.0;
 const JPEG_QUALITY: u8 = 85;
 
-pub async fn extract_first_page(pdf: &Path) -> anyhow::Result<String> {
+/// Renders the first page as a base64 JPEG whose longest side is at most
+/// `max_size` pixels. Vision models spend tokens per pixel, so a full 300 DPI
+/// page (~8 MP) is far slower to read and no easier to name.
+pub async fn extract_first_page(pdf: &Path, max_size: u32) -> anyhow::Result<String> {
     tracing::info!("Extracting first page from PDF: {}", pdf.display());
     let data = tokio::fs::read(pdf).await.context("failed to read PDF")?;
-    let jpeg = tokio::task::spawn_blocking(move || render_first_page(data)).await??;
+    let jpeg = tokio::task::spawn_blocking(move || render_first_page(data, max_size)).await??;
     tracing::info!("Extracted image: {} bytes", jpeg.len());
     Ok(base64::engine::general_purpose::STANDARD.encode(jpeg))
 }
 
-fn render_first_page(data: Vec<u8>) -> anyhow::Result<Vec<u8>> {
+fn render_first_page(data: Vec<u8>, max_size: u32) -> anyhow::Result<Vec<u8>> {
     let pdf = Pdf::new(data).map_err(|e| anyhow!("failed to parse PDF: {e:?}"))?;
     let page = pdf.pages().first().context("PDF has no pages")?;
 
     let (width, height) = page.render_dimensions();
-    let scale = (DPI / 72.0).min(f32::from(u16::MAX) / width.max(height).max(1.0));
+    let longest = (max_size as f32).min(f32::from(u16::MAX));
+    let scale = (DPI / 72.0).min(longest / width.max(height).max(1.0));
     let pixmap = hayro::render(
         page,
         &RenderCache::new(),
@@ -91,8 +95,8 @@ mod tests {
     }
 
     #[test]
-    fn renders_first_page_at_300_dpi() {
-        let jpeg = render_first_page(sample_pdf()).unwrap();
+    fn renders_first_page_at_300_dpi_when_under_the_cap() {
+        let jpeg = render_first_page(sample_pdf(), 4000).unwrap();
         let image = image::load_from_memory(&jpeg).unwrap().into_rgb8();
         let (width, height) = image.dimensions();
         assert_eq!(width, 2550);
@@ -103,7 +107,19 @@ mod tests {
     }
 
     #[test]
+    fn caps_the_longest_side() {
+        let jpeg = render_first_page(sample_pdf(), 1536).unwrap();
+        let image = image::load_from_memory(&jpeg).unwrap().into_rgb8();
+        let (width, height) = image.dimensions();
+        assert!((1535..=1536).contains(&height), "height {height}");
+        assert!((1186..=1188).contains(&width), "width {width}");
+
+        assert!(image.get_pixel(10, 10).0.iter().all(|&c| c > 240));
+        assert!(image.get_pixel(300, height - 300).0.iter().all(|&c| c < 15));
+    }
+
+    #[test]
     fn rejects_non_pdf_input() {
-        assert!(render_first_page(b"not a pdf".to_vec()).is_err());
+        assert!(render_first_page(b"not a pdf".to_vec(), 1536).is_err());
     }
 }
