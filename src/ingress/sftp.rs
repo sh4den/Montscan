@@ -11,7 +11,8 @@ use async_trait::async_trait;
 use russh::server::{Auth, ChannelOpenHandle, Msg, Server as _, Session};
 use russh::{Channel, ChannelId};
 use russh_sftp::protocol::{
-    Attrs, Data, File, FileAttributes, Handle, Name, OpenFlags, Status, StatusCode, Version,
+    Attrs, Data, File, FileAttributes, Handle, Name, OpenFlags, SftpHandle, Status, StatusCode,
+    Version,
 };
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 
@@ -226,7 +227,7 @@ enum OpenHandle {
 
 struct SftpSession {
     shared: Arc<Shared>,
-    handles: HashMap<String, OpenHandle>,
+    handles: HashMap<SftpHandle, OpenHandle>,
     next_handle: u64,
 }
 
@@ -243,9 +244,9 @@ impl SftpSession {
         crate::ingress::ssh::resolve(&self.shared.root, path).ok_or(StatusCode::PermissionDenied)
     }
 
-    fn insert(&mut self, handle: OpenHandle) -> String {
+    fn insert(&mut self, handle: OpenHandle) -> SftpHandle {
         self.next_handle += 1;
-        let id = self.next_handle.to_string();
+        let id = SftpHandle::from(&self.next_handle.to_string());
         self.handles.insert(id.clone(), handle);
         id
     }
@@ -305,7 +306,7 @@ impl russh_sftp::server::Handler for SftpSession {
         self.stat(id, path).await
     }
 
-    async fn fstat(&mut self, id: u32, handle: String) -> Result<Attrs, Self::Error> {
+    async fn fstat(&mut self, id: u32, handle: SftpHandle) -> Result<Attrs, Self::Error> {
         let path = match self.handles.get(&handle) {
             Some(OpenHandle::File { path, .. } | OpenHandle::Dir { path, .. }) => path.clone(),
             None => return Err(StatusCode::Failure),
@@ -328,7 +329,7 @@ impl russh_sftp::server::Handler for SftpSession {
     async fn fsetstat(
         &mut self,
         id: u32,
-        _handle: String,
+        _handle: SftpHandle,
         _attrs: FileAttributes,
     ) -> Result<Status, Self::Error> {
         Ok(ok(id))
@@ -350,7 +351,7 @@ impl russh_sftp::server::Handler for SftpSession {
         Ok(Handle { id, handle })
     }
 
-    async fn readdir(&mut self, id: u32, handle: String) -> Result<Name, Self::Error> {
+    async fn readdir(&mut self, id: u32, handle: SftpHandle) -> Result<Name, Self::Error> {
         let Some(OpenHandle::Dir { path, listed }) = self.handles.get_mut(&handle) else {
             return Err(StatusCode::Failure);
         };
@@ -399,7 +400,7 @@ impl russh_sftp::server::Handler for SftpSession {
     async fn read(
         &mut self,
         id: u32,
-        handle: String,
+        handle: SftpHandle,
         offset: u64,
         len: u32,
     ) -> Result<Data, Self::Error> {
@@ -421,7 +422,7 @@ impl russh_sftp::server::Handler for SftpSession {
     async fn write(
         &mut self,
         id: u32,
-        handle: String,
+        handle: SftpHandle,
         offset: u64,
         data: Vec<u8>,
     ) -> Result<Status, Self::Error> {
@@ -436,7 +437,7 @@ impl russh_sftp::server::Handler for SftpSession {
         Ok(ok(id))
     }
 
-    async fn close(&mut self, id: u32, handle: String) -> Result<Status, Self::Error> {
+    async fn close(&mut self, id: u32, handle: SftpHandle) -> Result<Status, Self::Error> {
         if let Some(OpenHandle::File {
             mut file,
             path,

@@ -1,5 +1,5 @@
 # BUILD
-FROM rust:1.99-alpine3.23 AS builder
+FROM rust:1.100-alpine3.24 AS builder
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ COPY src ./src
 RUN cargo build --release --locked
 
 # RUNTIME
-FROM alpine:3.23
+FROM alpine:3.24
 
 WORKDIR /app
 
