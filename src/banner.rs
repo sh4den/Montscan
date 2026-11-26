@@ -1,7 +1,7 @@
 use crate::ingress::Ingress;
 use colored::Colorize;
 
-use crate::config::Config;
+use crate::config::{Config, KeepAlive};
 
 pub struct IngressEntry {
     pub icon: &'static str,
@@ -69,13 +69,34 @@ pub fn print(cfg: &Config, ingresses: &[IngressEntry]) {
             ("Host", cfg.ollama.host.clone()),
             ("Model", cfg.ollama.model.clone()),
             ("Timeout", format!("{}s", cfg.ollama.timeout.as_secs())),
+            (
+                "Keep alive",
+                match &cfg.ollama.keep_alive {
+                    KeepAlive::Seconds(s) if *s < 0 => "forever".to_string(),
+                    KeepAlive::Seconds(s) => format!("{s}s"),
+                    KeepAlive::Duration(d) => d.clone(),
+                },
+            ),
+            (
+                "Thinking",
+                match cfg.ollama.think {
+                    Some(true) => "on",
+                    Some(false) => "off",
+                    None => "model default",
+                }
+                .to_string(),
+            ),
         ],
     );
 
     section(
         "📄",
         "PDF Processing",
-        &[("Renderer", "hayro (built-in)".to_string())],
+        &[
+            ("Renderer", "hayro (built-in)".to_string()),
+            ("Image size", format!("{}px max", cfg.ollama.image_max_size)),
+            ("Concurrency", cfg.max_concurrent_documents.to_string()),
+        ],
     );
 
     let rule = "──────────────────────────────────────────────────────────────────────".cyan();

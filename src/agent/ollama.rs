@@ -1,7 +1,7 @@
 use anyhow::{Context, bail};
 use serde::{Deserialize, Serialize};
 
-use crate::config::OllamaConfig;
+use crate::config::{KeepAlive, OllamaConfig};
 
 const PROMPT_TEMPLATE: &str = "Based on this scanned document image, generate a concise, descriptive filename (without extension).
 The filename should:
@@ -23,6 +23,9 @@ struct ChatRequest<'a> {
     model: &'a str,
     messages: [Message<'a>; 1],
     stream: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    think: Option<bool>,
+    keep_alive: &'a KeepAlive,
     options: Options,
 }
 
@@ -43,6 +46,14 @@ struct ChatResponse {
     message: ResponseMessage,
     #[serde(default)]
     done_reason: String,
+    #[serde(default)]
+    prompt_eval_count: u64,
+    #[serde(default)]
+    eval_count: u64,
+    #[serde(default)]
+    load_duration: u64,
+    #[serde(default)]
+    total_duration: u64,
 }
 
 #[derive(Deserialize)]
@@ -84,6 +95,8 @@ async fn request(
             images: [image_b64],
         }],
         stream: false,
+        think: cfg.think,
+        keep_alive: &cfg.keep_alive,
         options: Options {
             num_ctx: cfg.num_ctx,
         },
@@ -115,6 +128,13 @@ async fn request(
         .json()
         .await
         .context("Error decoding Ollama response")?;
+    tracing::info!(
+        "Ollama: {} prompt tokens, {} output tokens, {:.1}s total ({:.1}s loading model)",
+        parsed.prompt_eval_count,
+        parsed.eval_count,
+        parsed.total_duration as f64 / 1e9,
+        parsed.load_duration as f64 / 1e9,
+    );
     let name = sanitize_filename(parsed.message.content.trim());
     if name.is_empty() {
         if parsed.done_reason == "length" {
@@ -185,6 +205,8 @@ mod tests {
                 images: ["aGk="],
             }],
             stream: false,
+            think: Some(false),
+            keep_alive: &KeepAlive::Duration("30m".into()),
             options: Options { num_ctx: 8192 },
         };
         assert_eq!(
@@ -193,8 +215,29 @@ mod tests {
                 "model": "llava",
                 "messages": [{"role": "user", "content": "hi", "images": ["aGk="]}],
                 "stream": false,
+                "think": false,
+                "keep_alive": "30m",
                 "options": {"num_ctx": 8192}
             })
         );
+    }
+
+    #[test]
+    fn omits_think_when_left_to_the_model() {
+        let body = ChatRequest {
+            model: "llava",
+            messages: [Message {
+                role: "user",
+                content: "hi".into(),
+                images: ["aGk="],
+            }],
+            stream: false,
+            think: None,
+            keep_alive: &KeepAlive::Seconds(-1),
+            options: Options { num_ctx: 8192 },
+        };
+        let value = serde_json::to_value(&body).unwrap();
+        assert!(value.get("think").is_none());
+        assert_eq!(value["keep_alive"], serde_json::json!(-1));
     }
 }

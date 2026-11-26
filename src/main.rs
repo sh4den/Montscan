@@ -109,7 +109,12 @@ async fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let processor: Processor = Arc::new(Agent::new(http, cfg.ollama, egress));
+    let processor: Processor = Arc::new(Agent::new(
+        http,
+        cfg.ollama,
+        egress,
+        cfg.max_concurrent_documents,
+    ));
 
     let mut running = JoinSet::new();
     for entry in entries.into_iter().filter(|e| e.enabled) {
